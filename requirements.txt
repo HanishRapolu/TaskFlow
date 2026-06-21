@@ -1,0 +1,39 @@
+# ========================================
+# TASKFLOW - PROJECT DEPENDENCIES
+# ========================================
+# Note: Because TaskFlow is built on Node.js (JavaScript), these dependencies 
+# are automatically managed by the 'package.json' and 'package-lock.json' files. 
+# You install them simply by running `npm install` in the respective directories.
+# However, here is a consolidated list of the key packages for your reference!
+
+# ----------------------------------------
+# BACKEND (d:\Desktop\TaskFlow)
+# Command to install: npm install
+# ----------------------------------------
+express               # Web framework
+mongoose              # MongoDB Object Modeling
+dotenv                # Environment variable management
+bcryptjs              # Password hashing
+jsonwebtoken          # JWT for authentication/authorization
+cookie-parser         # Parse HTTP cookies for refresh tokens
+cors                  # Cross-Origin Resource Sharing
+helmet                # Security headers
+morgan                # HTTP request logger
+bullmq                # Background job queue
+ioredis               # Redis client (used by bullmq and socket.io)
+socket.io             # Real-time WebSocket communication
+@socket.io/redis-adapter # Scales Socket.io across multiple Node instances
+nodemailer            # Email sending
+zod                   # Schema validation for API requests
+express-async-handler # Error handling for async routes
+
+# ----------------------------------------
+# FRONTEND (d:\Desktop\TaskFlow\client)
+# Command to install: cd client && npm install
+# ----------------------------------------
+react                 # UI Library
+react-dom             # React DOM bindings
+react-router-dom      # Client-side routing
+axios                 # HTTP client for API requests
+lucide-react          # Beautiful SVG icons
+vite                  # Extremely fast frontend build tool (dev dependency)

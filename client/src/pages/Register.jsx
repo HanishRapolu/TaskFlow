@@ -1,11 +1,11 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
+import api from '../utils/api';
 
-export default function Login() {
+export default function Register() {
   const navigate = useNavigate();
-  const { login } = useContext(AuthContext);
-  const [email, setEmail] = useState(''); 
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -14,25 +14,38 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
+    
     try {
-      await login(email, password);
-      navigate('/select-workspace');
+      await api.post('/auth/register', {
+        name,
+        email,
+        password
+      });
+      // Registration successful (this creates their personal default workspace too)
+      window.location.href = '/login'; // Or we could auto-login
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
-    } finally {
+      setError(err.response?.data?.message || 'Registration failed.');
       setIsSubmitting(false);
     }
   };
 
   return (
     <div className="login-container">
-      <div className="glass-card login-card">
-        <h2 className="login-title">TaskFlow</h2>
-        <p className="login-subtitle">Sign in to your account</p>
+      <div className="glass-card login-card" style={{ maxWidth: '450px' }}>
+        <h2 className="login-title">Create Account</h2>
+        <p className="login-subtitle">Start your own workspace</p>
         
         {error && <div className="login-error">{error}</div>}
         
         <form onSubmit={handleSubmit} className="login-form">
+          <input 
+            type="text" 
+            placeholder="Full Name" 
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="modern-input"
+            required
+          />
           <input 
             type="email" 
             placeholder="Email address" 
@@ -43,19 +56,19 @@ export default function Login() {
           />
           <input 
             type="password" 
-            placeholder="Password" 
+            placeholder="Create Password" 
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="modern-input"
             required
           />
           <button type="submit" className="modern-btn primary" disabled={isSubmitting}>
-            {isSubmitting ? 'Signing in...' : 'Continue'}
+            {isSubmitting ? 'Creating...' : 'Sign Up as Owner'}
           </button>
         </form>
         
         <div style={{ marginTop: '1.5rem', color: 'var(--text-secondary)' }}>
-          Want to start a new company? <Link to="/register" style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Create an Owner Account</Link>
+          Already have an account? <Link to="/login" style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>Login</Link>
         </div>
       </div>
       
