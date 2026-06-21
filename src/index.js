@@ -15,6 +15,8 @@ import boardRoutes from './routes/boardRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import workspaceRoutes from './routes/workspaceRoutes.js';
 
+import './workers/emailWorker.js'; // Initialize BullMQ Worker
+
 dotenv.config();
 
 // Connect to MongoDB

@@ -47,7 +47,7 @@ export const inviteMember = asyncHandler(async (req, res) => {
       invitedBy: req.user._id,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: 'after' }
   );
 
   const inviteLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/accept-invite/${rawToken}`;
@@ -62,7 +62,6 @@ export const inviteMember = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Invitation sent successfully',
-    inviteLink // returning for testing since nodemailer isn't setup
   });
 });
 
