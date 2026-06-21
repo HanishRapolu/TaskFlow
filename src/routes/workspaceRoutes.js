@@ -8,4 +8,7 @@ const router = express.Router();
 // Route for adding an existing user directly to a workspace
 router.post('/:workspaceId/members', protect, authorizeWorkspace('owner', 'admin'), addMember);
 
+// Route for sending a secure email invite
+router.post('/:workspaceId/invite', protect, authorizeWorkspace('owner', 'admin'), inviteMember);
+
 export default router;

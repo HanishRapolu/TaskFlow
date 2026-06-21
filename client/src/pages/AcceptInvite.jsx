@@ -89,6 +89,8 @@ export default function AcceptInvite() {
           <>
             <p className="login-subtitle">
               You've been invited to join <strong>{inviteData.workspaceName}</strong> as an <strong>{inviteData.role}</strong>.
+              <br />
+              {inviteData.userExists && <span style={{ color: 'var(--accent-blue)' }}>Welcome back! Enter your password to accept.</span>}
             </p>
             
             <form onSubmit={handleSubmit} className="login-form">
@@ -99,24 +101,26 @@ export default function AcceptInvite() {
                 disabled
                 style={{ opacity: 0.6, cursor: 'not-allowed' }}
               />
-              <input 
-                type="text" 
-                placeholder="Full Name" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="modern-input"
-                required
-              />
+              {!inviteData.userExists && (
+                <input 
+                  type="text" 
+                  placeholder="Full Name" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="modern-input"
+                  required
+                />
+              )}
               <input 
                 type="password" 
-                placeholder="Create Password" 
+                placeholder={inviteData.userExists ? "Enter your password" : "Create Password"} 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="modern-input"
                 required
               />
               <button type="submit" className="modern-btn primary" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating Account...' : 'Join Workspace'}
+                {isSubmitting ? 'Processing...' : (inviteData.userExists ? 'Login & Join' : 'Create Account & Join')}
               </button>
             </form>
           </>
