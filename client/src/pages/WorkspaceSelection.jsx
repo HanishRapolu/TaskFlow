@@ -42,7 +42,7 @@ export default function WorkspaceSelection() {
       <div className="ws-container">
         <div className="ws-loader">
           <div className="spinner"></div>
-          <p style={{ color: 'var(--text-secondary)' }}>Loading your workspaces...</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Loading your projects...</p>
         </div>
       </div>
     );
@@ -59,8 +59,8 @@ export default function WorkspaceSelection() {
       </div>
       
       <div className="ws-header stagger-2">
-        <h1 className="ws-title">Which Workspace?</h1>
-        <p className="ws-subtitle">Select a workspace to enter your dashboard.</p>
+        <h1 className="ws-title">Which Project?</h1>
+        <p className="ws-subtitle">Select a project to enter your dashboard.</p>
       </div>
       
       <div className="ws-grid">
@@ -83,13 +83,13 @@ export default function WorkspaceSelection() {
         <div 
           className="ws-card ws-add-card glass-card stagger-card" 
           style={{ animationDelay: `${0.2 + (workspaces.length * 0.1)}s` }}
-          onClick={() => console.log('Create new workspace')} 
+          onClick={() => console.log('Create new project')} 
           tabIndex={0}
         >
           <div className="ws-avatar-add">
             <Plus size={32} color="#f8fafc" />
           </div>
-          <span className="ws-name">Add New</span>
+          <span className="ws-name">Add Project</span>
         </div>
       </div>
       

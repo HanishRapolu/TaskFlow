@@ -11,29 +11,28 @@ const taskSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    listId: {
+    status: {
+      type: String,
+      enum: ['Pending', 'In Progress', 'Completed'],
+      default: 'Pending',
+    },
+    assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'List',
-      required: true,
+      ref: 'User',
     },
-    assignees: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-      },
-    ],
-    dueDate: {
-      type: Date,
-    },
-    order: {
-      type: Number,
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
       required: true,
-      default: 0,
     },
     workspaceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Workspace',
       required: true,
+    },
+    isApproved: {
+      type: Boolean,
+      default: true,
     },
   },
   {

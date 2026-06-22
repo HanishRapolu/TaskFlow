@@ -7,6 +7,27 @@ import User from '../models/User.js';
 import Invite from '../models/Invite.js';
 import crypto from 'crypto';
 
+export const getWorkspace = asyncHandler(async (req, res) => {
+  const workspaceId = req.params.workspaceId || req.params.id;
+  
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw new AppError('Workspace not found', 404);
+
+  // Find the current user's role in this workspace
+  const member = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
+  if (!member) throw new AppError('You are not a member of this workspace', 403);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      _id: workspace._id,
+      name: workspace.name,
+      description: workspace.description,
+      role: member.role,
+    }
+  });
+});
+
 export const inviteMember = asyncHandler(async (req, res) => {
   const workspaceId = req.params.id || req.params.workspaceId;
   const { email, role } = req.body; // role should be 'admin' or 'member'

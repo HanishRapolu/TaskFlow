@@ -11,7 +11,6 @@ import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import boardRoutes from './routes/boardRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import workspaceRoutes from './routes/workspaceRoutes.js';
 
@@ -40,8 +39,7 @@ app.use(morgan('dev'));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/workspaces', workspaceRoutes);
-app.use('/api/workspaces/:workspaceId/boards', boardRoutes);
-app.use('/api/workspaces/:workspaceId/boards/:boardId/tasks', taskRoutes);
+app.use('/api/workspaces/:workspaceId/tasks', taskRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ success: true, message: 'Server is healthy' }));
