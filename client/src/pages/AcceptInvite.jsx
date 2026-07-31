@@ -1,31 +1,26 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useContext } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Mail, Lock, User, Eye, EyeOff, AlertCircle, ArrowRight, Building2, ShieldCheck, LogOut, Sparkles } from 'lucide-react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
-import '../pages/WorkspaceSelection.css'; // Reuse glass styles
+import { useToast } from '../context/ToastContext';
+import Spinner from '../components/Spinner';
 
 export default function AcceptInvite() {
   const { token } = useParams();
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
-  
+  const { user, registerInvited, logout } = useContext(AuthContext);
+  const toast = useToast();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [inviteData, setInviteData] = useState(null);
-  
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // If they are already logged in, they should logout first to accept a new invite
-    // Or we could auto-accept, but keeping it simple: require logout
-    if (user) {
-      setError('You are already logged in. Please log out first to accept a new invitation.');
-      setLoading(false);
-      return;
-    }
-
     const verifyToken = async () => {
       try {
         const { data } = await api.get(`/auth/invites/${token}`);
@@ -36,100 +31,179 @@ export default function AcceptInvite() {
         setLoading(false);
       }
     };
-    
     verifyToken();
-  }, [token, user]);
+  }, [token]);
+
+  const handleLogoutAndRetry = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
     setIsSubmitting(true);
-    
     try {
-      await api.post('/auth/register-invited', {
-        name,
-        password,
-        token
-      });
-      // Registration successful, token is now set via cookie/response.
-      // Easiest way is to just redirect to login so they can log in normally.
-      // Wait, our backend auto-logged them in and set cookies, but we aren't updating AuthContext manually here.
-      // Redirecting to /login or /select-workspace (and forcing a reload) is safest.
-      window.location.href = '/select-workspace';
+      const data = await registerInvited({ name: name.trim(), password, token });
+      toast.success(`Welcome to ${inviteData.workspaceName}, ${data.name}!`);
+      navigate('/select-workspace');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed.');
+      setError(err.response?.data?.message || 'Could not accept the invitation.');
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (loading) return <Spinner label="Verifying invitation..." />;
+
+  if (user) {
     return (
-      <div className="login-container">
-        <div className="ws-loader">
-          <div className="spinner"></div>
-          <p style={{ color: 'var(--text-secondary)' }}>Verifying invitation...</p>
+      <div className="auth-page">
+        <div className="bg-shape shape-1"></div>
+        <div className="bg-shape shape-2"></div>
+        <div className="glass-card auth-card">
+          <h2 className="auth-title" style={{ fontSize: '1.6rem' }}>Already signed in</h2>
+          <div className="auth-error" style={{ marginTop: '1rem' }}>
+            <AlertCircle size={18} />
+            <span>
+              You are logged in as <strong>{user.name}</strong>. Log out first to accept this invitation.
+            </span>
+          </div>
+          <div className="modal-footer" style={{ borderTop: 'none', padding: '1.25rem 0 0' }}>
+            <button className="modern-btn secondary" onClick={handleLogoutAndRetry}>
+              <LogOut size={18} /> Log out
+            </button>
+            <button className="modern-btn primary" onClick={() => navigate('/select-workspace')}>
+              Go to my projects <ArrowRight size={18} />
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="login-container">
-      <div className="glass-card login-card" style={{ maxWidth: '450px' }}>
-        <h2 className="login-title" style={{ fontSize: '2rem' }}>Accept Invitation</h2>
-        
-        {error ? (
-          <div>
-            <div className="login-error" style={{ marginBottom: '2rem' }}>{error}</div>
-            <button className="modern-btn secondary" onClick={() => navigate('/login')}>
-              Go to Login
-            </button>
+    <div className="auth-page">
+      <div className="bg-shape shape-1"></div>
+      <div className="bg-shape shape-2"></div>
+      <div className="bg-shape shape-3"></div>
+
+      <div className="glass-card auth-card">
+        <div className="auth-logo">
+          <div className="auth-logo-badge">
+            <Sparkles size={24} />
           </div>
+        </div>
+
+        {error && !inviteData ? (
+          <>
+            <h2 className="auth-title" style={{ fontSize: '1.6rem' }}>Invitation unavailable</h2>
+            <div className="auth-error" style={{ marginTop: '1rem' }}>
+              <AlertCircle size={18} />
+              <span>{error}</span>
+            </div>
+            <div className="modal-footer" style={{ borderTop: 'none', padding: '1.25rem 0 0', justifyContent: 'center' }}>
+              <Link to="/login" className="modern-btn secondary">Go to Sign in</Link>
+            </div>
+          </>
         ) : (
           <>
-            <p className="login-subtitle">
-              You've been invited to join <strong>{inviteData.workspaceName}</strong> as an <strong>{inviteData.role}</strong>.
-              <br />
-              {inviteData.userExists && <span style={{ color: 'var(--accent-blue)' }}>Welcome back! Enter your password to accept.</span>}
+            <h2 className="auth-title" style={{ fontSize: '1.6rem' }}>You're invited!</h2>
+            <p className="auth-subtitle" style={{ marginBottom: '1.4rem' }}>
+              Join <strong style={{ color: 'var(--accent-blue)' }}>{inviteData.workspaceName}</strong> on TaskFlow
             </p>
-            
-            <form onSubmit={handleSubmit} className="login-form">
-              <input 
-                type="email" 
-                value={inviteData.email}
-                className="modern-input"
-                disabled
-                style={{ opacity: 0.6, cursor: 'not-allowed' }}
-              />
-              {!inviteData.userExists && (
-                <input 
-                  type="text" 
-                  placeholder="Full Name" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="modern-input"
-                  required
-                />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem', marginBottom: '1.4rem' }}>
+              <div className="chip" style={{ justifyContent: 'flex-start', padding: '0.5rem 0.9rem', fontSize: '0.85rem', maxWidth: 'none' }}>
+                <Building2 size={16} style={{ color: 'var(--accent-blue)' }} />
+                <span>Workspace: {inviteData.workspaceName}</span>
+              </div>
+              <div className="chip" style={{ justifyContent: 'flex-start', padding: '0.5rem 0.9rem', fontSize: '0.85rem', maxWidth: 'none' }}>
+                <ShieldCheck size={16} style={{ color: 'var(--accent-purple)' }} />
+                <span>Role: {inviteData.role}</span>
+              </div>
+              {inviteData.userExists && (
+                <div className="auth-success" style={{ marginBottom: 0 }}>
+                  <Sparkles size={18} />
+                  <span>Welcome back! Enter your password to accept.</span>
+                </div>
               )}
-              <input 
-                type="password" 
-                placeholder={inviteData.userExists ? "Enter your password" : "Create Password"} 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="modern-input"
-                required
-              />
+            </div>
+
+            {error && (
+              <div className="auth-error" style={{ marginBottom: '0.9rem' }}>
+                <AlertCircle size={18} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="auth-form">
+              <div className="field">
+                <label className="field-label">Invited email</label>
+                <div className="input-wrap">
+                  <span className="input-icon"><Mail size={18} /></span>
+                  <input type="email" value={inviteData.email} className="modern-input" disabled />
+                </div>
+              </div>
+
+              {!inviteData.userExists && (
+                <div className="field">
+                  <label className="field-label">Full name</label>
+                  <div className="input-wrap">
+                    <span className="input-icon"><User size={18} /></span>
+                    <input
+                      type="text"
+                      placeholder="Your full name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="modern-input"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="field">
+                <label className="field-label">{inviteData.userExists ? 'Your password' : 'Create a password'}</label>
+                <div className="input-wrap">
+                  <span className="input-icon"><Lock size={18} /></span>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={inviteData.userExists ? 'Enter your password' : 'At least 6 characters'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="modern-input"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    style={{ position: 'absolute', right: '0.45rem', width: '34px', height: '34px' }}
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
               <button type="submit" className="modern-btn primary" disabled={isSubmitting}>
-                {isSubmitting ? 'Processing...' : (inviteData.userExists ? 'Login & Join' : 'Create Account & Join')}
+                {isSubmitting ? <span className="spinner sm"></span> : <ArrowRight size={18} />}
+                {isSubmitting
+                  ? 'Joining...'
+                  : inviteData.userExists
+                    ? 'Sign in & join'
+                    : 'Create account & join'}
               </button>
             </form>
           </>
         )}
       </div>
-      
-      {/* Animated background elements */}
-      <div className="bg-shape shape-1"></div>
-      <div className="bg-shape shape-2"></div>
     </div>
   );
 }

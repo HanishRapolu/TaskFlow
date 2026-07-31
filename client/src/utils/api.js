@@ -13,15 +13,28 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor to handle 401s and refresh token (optional basic setup)
+// Auth endpoints should never trigger the refresh flow (e.g. a 401 on login
+// means bad credentials, not an expired access token).
+const isAuthEndpoint = (url = '') => url.includes('/auth/');
+
+// Response interceptor to handle 401s and refresh the access token
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       originalRequest._retry = true;
       try {
-        const { data } = await axios.post('http://localhost:5000/api/auth/refresh-token', {}, { withCredentials: true });
+        const { data } = await axios.post(
+          'http://localhost:5000/api/auth/refresh-token',
+          {},
+          { withCredentials: true }
+        );
         localStorage.setItem('accessToken', data.accessToken);
         api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
         return api(originalRequest);
