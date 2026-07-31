@@ -793,6 +793,72 @@ button {
   padding: 3rem;
 }
 
+.ws-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2.8rem;
+  width: 100%;
+  max-width: 860px;
+}
+
+.ws-section { display: flex; flex-direction: column; gap: 1.2rem; }
+
+.ws-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+}
+
+.ws-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.ws-section-count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.12);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
+
+.company-avatar {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
+}
+
+.ws-card:hover .company-avatar {
+  box-shadow: 0 0 0 8px rgba(139, 92, 246, 0.18);
+}
+
+.create-company-link { margin-top: 2rem; }
+
+/* ---------- Company View ---------- */
+.company-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+  margin-bottom: 2.8rem;
+  width: 100%;
+  max-width: 860px;
+}
+
+.company-back { align-self: flex-start; }
+
+.company-title-row {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  justify-content: center;
+}
+
 /* ---------- Dashboard ---------- */
 .dashboard-layout {
   display: flex;

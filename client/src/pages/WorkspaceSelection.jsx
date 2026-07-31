@@ -1,6 +1,6 @@
 import { useEffect, useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, LogOut, Zap, Crown, ShieldCheck, User, Info, ArrowRight, Inbox, Sparkles } from 'lucide-react';
+import { LogOut, Zap, Crown, ShieldCheck, User, Building2, Info, Sparkles } from 'lucide-react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import Spinner from '../components/Spinner';
@@ -15,27 +15,56 @@ const ROLE_META = {
 export default function WorkspaceSelection() {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
+  const [companies, setCompanies] = useState([]);
   const [workspaces, setWorkspaces] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
+
+  const [showCreateCompany, setShowCreateCompany] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [creatingCompany, setCreatingCompany] = useState(false);
+  const [companyError, setCompanyError] = useState('');
 
   useEffect(() => {
-    const fetchWorkspaces = async () => {
+    const fetchData = async () => {
       try {
         const { data } = await api.get('/users/me/workspaces');
-        setWorkspaces(data || []);
+        setCompanies(data?.companies || []);
+        setWorkspaces(data?.workspaces || []);
       } catch (err) {
         console.error('Failed to fetch workspaces', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchWorkspaces();
+    fetchData();
   }, []);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleCreateCompany = async (e) => {
+    e.preventDefault();
+    setCompanyError('');
+    if (!companyName.trim()) {
+      setCompanyError('Company name is required.');
+      return;
+    }
+    setCreatingCompany(true);
+    try {
+      const { data } = await api.post('/companies', { name: companyName.trim() });
+      setCompanies((prev) => [
+        ...prev,
+        { companyId: data.data._id, name: data.data.name, role: 'owner' },
+      ]);
+      setCompanyName('');
+      setShowCreateCompany(false);
+    } catch (err) {
+      setCompanyError(err.response?.data?.message || 'Could not create the company.');
+    } finally {
+      setCreatingCompany(false);
+    }
   };
 
   const getInitial = (name) => (name ? name.charAt(0).toUpperCase() : 'W');
@@ -50,7 +79,10 @@ export default function WorkspaceSelection() {
     );
   };
 
-  if (loading) return <Spinner label="Loading your projects..." />;
+  if (loading) return <Spinner label="Loading your organization..." />;
+
+  const hasCompany = companies.length > 0;
+  const hasWorkspaces = workspaces.length > 0;
 
   return (
     <div className="ws-page">
@@ -78,83 +110,145 @@ export default function WorkspaceSelection() {
       </div>
 
       <div className="ws-header stagger-1">
-        <h1 className="ws-title">Choose your <span className="ws-title-gradient">project</span></h1>
-        <p className="ws-subtitle">Select a project to open your dashboard</p>
+        <h1 className="ws-title">
+          Welcome, <span className="ws-title-gradient">{user?.name?.split(' ')[0] || 'there'}</span>
+        </h1>
+        <p className="ws-subtitle">Your company and the projects you belong to</p>
       </div>
 
-      {workspaces.length === 0 ? (
+      {!hasCompany && !hasWorkspaces ? (
         <div className="glass-card ws-empty">
           <div className="empty-state-icon">
-            <Inbox size={36} />
+            <Building2 size={36} />
           </div>
-          <h3>No projects yet</h3>
-          <p>Registering a new owner account automatically creates a personal workspace for you.</p>
+          <h3>You don't have a company yet</h3>
+          <p>Create your own organization to start building projects with your team.</p>
+          <button className="modern-btn primary" onClick={() => setShowCreateCompany(true)}>
+            <Sparkles size={18} /> Create your company
+          </button>
         </div>
       ) : (
-        <div className="ws-grid">
-          {workspaces.map((ws) => (
-            <div
-              key={ws.workspaceId}
-              className="ws-card glass-card"
-              onClick={() => navigate(`/w/${ws.workspaceId}`)}
-              onKeyDown={(e) => e.key === 'Enter' && navigate(`/w/${ws.workspaceId}`)}
-              tabIndex={0}
-              role="button"
-            >
-              <div className="ws-avatar">{getInitial(ws.name)}</div>
-              <span className="ws-name">{ws.name}</span>
-              {getRoleBadge(ws.role)}
-            </div>
-          ))}
+        <div className="ws-sections">
+          {hasCompany && (
+            <section className="ws-section">
+              <div className="ws-section-head">
+                <h2 className="ws-section-title">Your Company</h2>
+                <span className="badge role-owner">
+                  <Crown size={12} /> Owner
+                </span>
+              </div>
+              <div className="ws-grid">
+                {companies.map((c) => (
+                  <div
+                    key={c.companyId}
+                    className="ws-card glass-card"
+                    onClick={() => navigate(`/c/${c.companyId}`)}
+                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/c/${c.companyId}`)}
+                    tabIndex={0}
+                    role="button"
+                  >
+                    <div className="ws-avatar company-avatar">
+                      <Building2 size={36} />
+                    </div>
+                    <span className="ws-name">{c.name}</span>
+                    {getRoleBadge(c.role)}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-          <div
-            className="ws-card ws-add-card glass-card"
-            onClick={() => setShowAddModal(true)}
-            onKeyDown={(e) => e.key === 'Enter' && setShowAddModal(true)}
-            tabIndex={0}
-            role="button"
-          >
-            <div className="ws-add-icon">
-              <Plus size={34} />
-            </div>
-            <span className="ws-name">Add Project</span>
-            <span className="badge role-member" style={{ marginTop: '0.2rem' }}>
-              <Info size={12} /> How it works
-            </span>
-          </div>
+          {hasWorkspaces && (
+            <section className="ws-section">
+              <div className="ws-section-head">
+                <h2 className="ws-section-title">Projects you're in</h2>
+                <span className="ws-section-count">{workspaces.length}</span>
+              </div>
+              <div className="ws-grid">
+                {workspaces.map((ws) => (
+                  <div
+                    key={ws.workspaceId}
+                    className="ws-card glass-card"
+                    onClick={() => navigate(`/w/${ws.workspaceId}`)}
+                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/w/${ws.workspaceId}`)}
+                    tabIndex={0}
+                    role="button"
+                  >
+                    <div className="ws-avatar">{getInitial(ws.name)}</div>
+                    <span className="ws-name">{ws.name}</span>
+                    {getRoleBadge(ws.role)}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
 
       <Modal
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Create a new project"
-        icon={<Sparkles size={20} />}
+        open={showCreateCompany}
+        onClose={() => {
+          setShowCreateCompany(false);
+          setCompanyError('');
+        }}
+        title="Create your company"
+        icon={<Building2 size={20} />}
+        footer={
+          <>
+            <button
+              className="modern-btn secondary"
+              onClick={() => {
+                setShowCreateCompany(false);
+                setCompanyError('');
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="modern-btn primary"
+              type="submit"
+              form="create-company-form"
+              disabled={creatingCompany}
+            >
+              {creatingCompany ? <span className="spinner sm"></span> : <Sparkles size={17} />}
+              {creatingCompany ? 'Creating...' : 'Create company'}
+            </button>
+          </>
+        }
       >
-        <div className="info-banner">
-          <Info size={18} />
-          <span>
-            New projects (workspaces) are created automatically when a new <strong>Owner account</strong> is
-            registered on TaskFlow. Each owner gets their own workspace named after them.
-          </span>
-        </div>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-          Once your project exists, you can invite teammates by email as <strong>Admins</strong> or{' '}
-          <strong>Members</strong> from inside the dashboard. Admins and Owners can create tasks, approve
-          pending work and manage the team.
-        </p>
-        <div className="modal-footer" style={{ borderTop: 'none', padding: '0.5rem 0 0' }}>
-          <button
-            className="modern-btn primary"
-            onClick={() => {
-              setShowAddModal(false);
-              navigate('/register');
-            }}
-          >
-            Register an Owner account <ArrowRight size={18} />
-          </button>
-        </div>
+        {companyError && (
+          <div className="auth-error">
+            <Info size={18} />
+            <span>{companyError}</span>
+          </div>
+        )}
+        <form id="create-company-form" onSubmit={handleCreateCompany} className="invite-form">
+          <div className="field">
+            <label className="field-label"><Building2 size={14} /> Company name</label>
+            <input
+              type="text"
+              placeholder="e.g. Acme Inc."
+              className="modern-input"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              required
+            />
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Your company groups the projects (workspaces) you create. You can create projects
+            inside your company and invite teammates to them by email.
+          </p>
+        </form>
       </Modal>
+
+      {!hasCompany && hasWorkspaces && (
+        <button
+          className="modern-btn ghost create-company-link"
+          onClick={() => setShowCreateCompany(true)}
+        >
+          <Building2 size={16} /> Create your own company
+        </button>
+      )}
     </div>
   );
 }

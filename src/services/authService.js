@@ -27,7 +27,7 @@ class AuthService {
       throw new AppError('User already exists', 400);
     }
 
-    const user = await authRepository.createUserWithWorkspace({ name, email, password });
+    const user = await authRepository.createUserWithCompany({ name, email, password });
     
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);

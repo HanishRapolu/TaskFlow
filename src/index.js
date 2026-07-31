@@ -13,6 +13,7 @@ import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import workspaceRoutes from './routes/workspaceRoutes.js';
+import companyRoutes from './routes/companyRoutes.js';
 
 import './workers/emailWorker.js'; // Initialize BullMQ Worker
 
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/workspaces/:workspaceId/tasks', taskRoutes);
+app.use('/api/companies', companyRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ success: true, message: 'Server is healthy' }));

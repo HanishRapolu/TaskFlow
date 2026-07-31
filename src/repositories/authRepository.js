@@ -1,5 +1,5 @@
 import User from '../models/User.js';
-import Workspace from '../models/Workspace.js';
+import Company from '../models/Company.js';
 
 class AuthRepository {
   async findUserByEmail(email) {
@@ -10,7 +10,7 @@ class AuthRepository {
     return await User.findById(id);
   }
 
-  async createUserWithWorkspace(userData) {
+  async createUserWithCompany(userData) {
     // Create the user
     const user = new User({
       name: userData.name,
@@ -20,17 +20,13 @@ class AuthRepository {
     
     await user.save(); // Password hashed by pre-save hook
     
-    // Create default workspace for user
-    const workspace = new Workspace({
-      name: `${user.name}'s Workspace`,
+    // Create default company for the owner
+    const company = new Company({
+      name: `${user.name}'s Company`,
       owner: user._id,
-      members: [{
-        userId: user._id,
-        role: 'owner',
-      }]
     });
     
-    await workspace.save();
+    await company.save();
     
     return user;
   }

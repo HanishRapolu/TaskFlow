@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import WorkspaceSelection from './pages/WorkspaceSelection';
+import CompanyView from './pages/CompanyView';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -23,6 +24,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <WorkspaceSelection />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/c/:companyId/*"
+              element={
+                <ProtectedRoute>
+                  <CompanyView />
                 </ProtectedRoute>
               }
             />
