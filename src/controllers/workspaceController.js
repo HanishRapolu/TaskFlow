@@ -28,6 +28,56 @@ export const getWorkspace = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get workspace members and pending invites
+// @route   GET /api/workspaces/:workspaceId/members
+// @access  Private (Workspace members)
+export const getWorkspaceMembers = asyncHandler(async (req, res) => {
+  const { workspaceId } = req.params;
+
+  const workspace = await Workspace.findById(workspaceId).populate('members.userId', 'name email avatar');
+  if (!workspace) throw new AppError('Workspace not found', 404);
+
+  // Check if user is a member
+  const requester = workspace.members.find(m => m.userId._id.toString() === req.user._id.toString());
+  if (!requester) throw new AppError('Not authorized', 403);
+
+  // Get pending invites
+  const pendingInvites = await Invite.find({ 
+    workspaceId, 
+    expiresAt: { $gt: Date.now() } 
+  }).select('email role invitedBy expiresAt createdAt').populate('invitedBy', 'name email');
+
+  // Format members
+  const members = workspace.members.map(m => ({
+    _id: m.userId._id,
+    name: m.userId.name,
+    email: m.userId.email,
+    avatar: m.userId.avatar,
+    role: m.role,
+    joinedAt: m.joinedAt,
+    status: 'active',
+  }));
+
+  // Format pending invites
+  const invites = pendingInvites.map(invite => ({
+    _id: invite._id,
+    email: invite.email,
+    role: invite.role,
+    invitedBy: invite.invitedBy,
+    expiresAt: invite.expiresAt,
+    createdAt: invite.createdAt,
+    status: 'pending',
+  }));
+
+  res.status(200).json({
+    success: true,
+    data: {
+      members,
+      invites,
+    }
+  });
+});
+
 export const inviteMember = asyncHandler(async (req, res) => {
   const workspaceId = req.params.id || req.params.workspaceId;
   const { email, role } = req.body; // role should be 'admin' or 'member'

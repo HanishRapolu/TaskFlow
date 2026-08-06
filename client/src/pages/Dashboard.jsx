@@ -54,10 +54,25 @@ export default function Dashboard() {
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
 
+  const [membersData, setMembersData] = useState({ members: [], invites: [] });
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
   const loadData = useCallback(async () => {
     const wsRes = await api.get(`/workspaces/${workspaceId}`);
     const tasksRes = await api.get(`/workspaces/${workspaceId}/tasks`);
     return { project: wsRes.data.data, tasks: tasksRes.data || [] };
+  }, [workspaceId]);
+
+  const loadMembers = useCallback(async () => {
+    setLoadingMembers(true);
+    try {
+      const res = await api.get(`/workspaces/${workspaceId}/members`);
+      setMembersData(res.data.data);
+    } catch (err) {
+      console.error('Failed to load members:', err);
+    } finally {
+      setLoadingMembers(false);
+    }
   }, [workspaceId]);
 
   useEffect(() => {
@@ -80,6 +95,12 @@ export default function Dashboard() {
       active = false;
     };
   }, [loadData]);
+
+  useEffect(() => {
+    if (canManage) {
+      loadMembers();
+    }
+  }, [canManage, loadMembers]);
 
   const handleRetry = async () => {
     setError('');
@@ -495,6 +516,90 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
+
+            <div className="glass-card panel">
+              <div className="panel-title"><Users size={20} /> Current members</div>
+              {loadingMembers ? (
+                <div className="loading-members">Loading members...</div>
+              ) : membersData.members.length === 0 ? (
+                <p className="panel-sub">No members yet. Invite someone to get started!</p>
+              ) : (
+                <div className="table-wrap">
+                  <table className="members-table">
+                    <thead>
+                      <tr>
+                        <th>Member</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Joined</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {membersData.members.map((member) => (
+                        <tr key={member._id}>
+                          <td>
+                            <div className="member-cell">
+                              <div className="member-avatar">{member.name?.charAt(0)?.toUpperCase() || 'U'}</div>
+                              <span>{member.name}</span>
+                            </div>
+                          </td>
+                          <td>{member.email}</td>
+                          <td>
+                            <span className={`badge role-${member.role}`}>
+                              <span className="role-icon">
+                                {member.role === 'owner' && <Crown size={10} />}
+                                {member.role === 'admin' && <ShieldCheck size={10} />}
+                                {member.role === 'member' && <User size={10} />}
+                              </span>
+                              {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                            </span>
+                          </td>
+                          <td>{member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {membersData.invites.length > 0 && (
+              <div className="glass-card panel">
+                <div className="panel-title"><Mail size={20} /> Pending invites</div>
+                <div className="table-wrap">
+                  <table className="members-table">
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Invited by</th>
+                        <th>Expires</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {membersData.invites.map((invite) => (
+                        <tr key={invite._id}>
+                          <td>{invite.email}</td>
+                          <td>
+                            <span className={`badge role-${invite.role}`}>
+                              <span className="role-icon">
+                                {invite.role === 'admin' && <ShieldCheck size={10} />}
+                                {invite.role === 'member' && <User size={10} />}
+                              </span>
+                              {invite.role.charAt(0).toUpperCase() + invite.role.slice(1)}
+                            </span>
+                          </td>
+                          <td>{invite.invitedBy?.name || invite.invitedBy?.email || 'Unknown'}</td>
+                          <td>{new Date(invite.expiresAt).toLocaleDateString()}</td>
+                          <td><span className="badge status-pending">Pending</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             <div className="glass-card panel">
               <div className="panel-title"><Send size={20} /> Invite by email</div>
