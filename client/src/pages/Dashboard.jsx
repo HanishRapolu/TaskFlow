@@ -57,6 +57,9 @@ export default function Dashboard() {
   const [membersData, setMembersData] = useState({ members: [], invites: [] });
   const [loadingMembers, setLoadingMembers] = useState(false);
 
+  const canManage = project?.role === 'admin' || project?.role === 'owner';
+  const isOwner = project?.role === 'owner';
+
   const loadData = useCallback(async () => {
     const wsRes = await api.get(`/workspaces/${workspaceId}`);
     const tasksRes = await api.get(`/workspaces/${workspaceId}/tasks`);
@@ -87,14 +90,12 @@ export default function Dashboard() {
     loadData()
       .then(({ project: p, tasks: t }) => {
         if (!active) return;
-        console.log('Dashboard loaded:', { project: p, tasksCount: t.length });
         setProject(p);
         setTasks(t);
         setError('');
       })
       .catch((err) => {
         if (!active) return;
-        console.error('Dashboard load error:', err);
         setError(err.response?.data?.message || 'Failed to load project dashboard');
       })
       .finally(() => {
@@ -124,9 +125,6 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
-
-  const canManage = project?.role === 'admin' || project?.role === 'owner';
-  const isOwner = project?.role === 'owner';
 
   const canUpdateStatus = useCallback(
     (task) => {

@@ -9,25 +9,13 @@ import crypto from 'crypto';
 
 export const getWorkspace = asyncHandler(async (req, res) => {
   const workspaceId = req.params.workspaceId || req.params.id;
-  console.log('getWorkspace called:', { workspaceId, userId: req.user?._id });
   
   const workspace = await Workspace.findById(workspaceId);
-  if (!workspace) {
-    console.log('Workspace not found:', workspaceId);
-    throw new AppError('Workspace not found', 404);
-  }
+  if (!workspace) throw new AppError('Workspace not found', 404);
 
   // Find the current user's role in this workspace
   const member = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
-  console.log('Member check:', { 
-    members: workspace.members.map(m => ({ userId: m.userId.toString(), role: m.role })),
-    requestUserId: req.user._id.toString(),
-    found: !!member 
-  });
-  if (!member) {
-    console.log('User not a member of workspace');
-    throw new AppError('You are not a member of this workspace', 403);
-  }
+  if (!member) throw new AppError('You are not a member of this workspace', 403);
 
   res.status(200).json({
     success: true,
