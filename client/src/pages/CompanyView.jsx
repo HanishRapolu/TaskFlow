@@ -30,6 +30,12 @@ export default function CompanyView() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
+  const [inviteAdminOpen, setInviteAdminOpen] = useState(false);
+  const [inviteAdminEmail, setInviteAdminEmail] = useState('');
+  const [invitingAdmin, setInvitingAdmin] = useState(false);
+  const [inviteAdminError, setInviteAdminError] = useState('');
+  const [pendingWorkspaceId, setPendingWorkspaceId] = useState(null);
+
   const loadData = useCallback(async () => {
     const [companyRes, wsRes] = await Promise.all([
       api.get(`/companies/${companyId}`),
@@ -77,10 +83,11 @@ export default function CompanyView() {
         name: newWorkspace.name.trim(),
         description: newWorkspace.description.trim(),
       });
+      const workspaceId = data.data._id;
       setWorkspaces((prev) => [
         ...prev,
         {
-          workspaceId: data.data._id,
+          workspaceId,
           name: data.data.name,
           description: data.data.description,
           role: 'owner',
@@ -88,11 +95,45 @@ export default function CompanyView() {
       ]);
       setNewWorkspace({ name: '', description: '' });
       setCreateOpen(false);
+      // Open admin invite modal
+      setPendingWorkspaceId(workspaceId);
+      setInviteAdminOpen(true);
     } catch (err) {
       setCreateError(err.response?.data?.message || 'Could not create the workspace.');
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleInviteAdmin = async (e) => {
+    e.preventDefault();
+    setInviteAdminError('');
+    if (!inviteAdminEmail.trim()) {
+      setInviteAdminError('Email is required.');
+      return;
+    }
+    if (!pendingWorkspaceId) return;
+    
+    setInvitingAdmin(true);
+    try {
+      await api.post(`/workspaces/${pendingWorkspaceId}/invite`, {
+        email: inviteAdminEmail.trim(),
+        role: 'admin',
+      });
+      setInviteAdminEmail('');
+      setInviteAdminOpen(false);
+      setPendingWorkspaceId(null);
+    } catch (err) {
+      setInviteAdminError(err.response?.data?.message || 'Failed to invite admin.');
+    } finally {
+      setInvitingAdmin(false);
+    }
+  };
+
+  const skipInviteAdmin = () => {
+    setInviteAdminEmail('');
+    setInviteAdminOpen(false);
+    setPendingWorkspaceId(null);
   };
 
   const getInitial = (name) => (name ? name.charAt(0).toUpperCase() : 'W');
@@ -277,6 +318,57 @@ export default function CompanyView() {
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
             You'll be the <strong style={{ color: 'var(--text-primary)' }}>Owner</strong> of this
             workspace. Invite teammates by email from inside it.
+          </p>
+        </form>
+      </Modal>
+
+      <Modal
+        open={inviteAdminOpen}
+        onClose={skipInviteAdmin}
+        title="Invite an Admin"
+        icon={<ShieldCheck size={20} />}
+        footer={
+          <>
+            <button
+              className="modern-btn secondary"
+              onClick={skipInviteAdmin}
+            >
+              Skip for now
+            </button>
+            <button
+              className="modern-btn primary"
+              type="submit"
+              form="invite-admin-form"
+              disabled={invitingAdmin}
+            >
+              {invitingAdmin ? <span className="spinner sm"></span> : <User size={17} />}
+              {invitingAdmin ? 'Inviting...' : 'Invite Admin'}
+            </button>
+          </>
+        }
+      >
+        {inviteAdminError && (
+          <div className="auth-error">
+            <AlertTriangle size={18} />
+            <span>{inviteAdminError}</span>
+          </div>
+        )}
+        <form id="invite-admin-form" onSubmit={handleInviteAdmin} className="invite-form">
+          <div className="field">
+            <label className="field-label"><User size={14} /> Admin email</label>
+            <input
+              type="email"
+              placeholder="e.g. admin@company.com"
+              className="modern-input"
+              value={inviteAdminEmail}
+              onChange={(e) => setInviteAdminEmail(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Invite a workspace <strong style={{ color: 'var(--text-primary)' }}>Admin</strong> to help
+            manage this project. Only one admin per workspace.
           </p>
         </form>
       </Modal>

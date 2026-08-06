@@ -46,6 +46,19 @@ export const inviteMember = asyncHandler(async (req, res) => {
     throw new AppError('Only owners can invite admins', 403);
   }
 
+  // Prevent multiple admins: check if workspace already has an admin (member or pending invite)
+  if (targetRole === 'admin') {
+    const existingAdminMember = workspace.members.some(m => m.role === 'admin');
+    if (existingAdminMember) {
+      throw new AppError('This workspace already has an admin. Only one admin is allowed per workspace.', 400);
+    }
+    
+    const existingAdminInvite = await Invite.findOne({ workspaceId, role: 'admin', expiresAt: { $gt: Date.now() } });
+    if (existingAdminInvite) {
+      throw new AppError('An admin invite is already pending for this workspace.', 400);
+    }
+  }
+
   // Check if user is already a member
   const existingUser = await User.findOne({ email });
   if (existingUser) {
