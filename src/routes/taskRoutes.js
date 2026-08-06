@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTasks, createTask, updateTaskStatus, approveTask, deleteTask } from '../controllers/taskController.js';
+import { getTasks, createTask, updateTaskStatus, approveTask, deleteTask, assignTask } from '../controllers/taskController.js';
 import { protect } from '../middleware/protect.js';
 
 // Merge params to access workspaceId from parent router
@@ -11,6 +11,7 @@ router.route('/')
 
 router.put('/:taskId/status', protect, updateTaskStatus);
 router.put('/:taskId/approve', protect, approveTask);
+router.put('/:taskId/assign', protect, assignTask);
 router.delete('/:taskId', protect, deleteTask);
 
 export default router;

@@ -9,6 +9,85 @@ const getUserRole = (workspace, userId) => {
   return member ? member.role : null;
 };
 
+// Helper to check if target user is in workspace and get their role
+const getTargetUserRole = (workspace, targetUserId) => {
+  const member = workspace.members.find(m => m.userId.toString() === targetUserId.toString());
+  return member ? member.role : null;
+};
+
+// @desc    Assign/Reassign a task
+// @route   PUT /api/workspaces/:workspaceId/tasks/:taskId/assign
+// @access  Private
+export const assignTask = asyncHandler(async (req, res) => {
+  const { workspaceId, taskId } = req.params;
+  const { assignedTo } = req.body; // can be null to unassign
+
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw new AppError('Workspace not found', 404);
+
+  const requesterRole = getUserRole(workspace, req.user._id);
+  if (!requesterRole) throw new AppError('Not authorized', 403);
+
+  const task = await Task.findById(taskId);
+  if (!task) throw new AppError('Task not found', 404);
+
+  if (task.workspaceId.toString() !== workspaceId) {
+    throw new AppError('Task does not belong to this workspace', 400);
+  }
+
+  // If unassigning (assignedTo is null), allow if user has permission to modify task
+  if (!assignedTo) {
+    if (requesterRole !== 'admin' && requesterRole !== 'owner') {
+      if (task.assignedTo?.toString() !== req.user._id.toString()) {
+        throw new AppError('Not authorized to unassign this task', 403);
+      }
+    }
+    task.assignedTo = null;
+    task.isApproved = true;
+    await task.save();
+    const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name email').populate('createdBy', 'name email');
+    return res.json(populatedTask);
+  }
+
+  // Check if target user is in workspace
+  const targetRole = getTargetUserRole(workspace, assignedTo);
+  if (!targetRole) {
+    throw new AppError('Target user is not a member of this workspace', 400);
+  }
+
+  // Role-based assignment rules
+  let requiresApproval = false;
+
+  if (requesterRole === 'owner') {
+    // Owner can assign to anyone (owner, admin, member)
+    // No approval needed
+  } else if (requesterRole === 'admin') {
+    // Admin can assign to self and members, NOT owner
+    if (targetRole === 'owner') {
+      throw new AppError('Admins cannot assign tasks to the workspace owner', 403);
+    }
+    // Admin assigning to member or self - no approval needed
+  } else if (requesterRole === 'member') {
+    // Member can assign to self and other members
+    // But assigning to another member requires approval
+    if (targetRole === 'owner' || targetRole === 'admin') {
+      throw new AppError('Members cannot assign tasks to admins or owners', 403);
+    }
+    if (assignedTo.toString() !== req.user._id.toString()) {
+      // Assigning to another member - requires approval
+      requiresApproval = true;
+    }
+    // Assigning to self - no approval needed
+  }
+
+  task.assignedTo = assignedTo;
+  task.isApproved = !requiresApproval;
+  await task.save();
+
+  const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name email').populate('createdBy', 'name email');
+  res.json(populatedTask);
+});
+
 // @desc    Get all tasks for a workspace
 // @route   GET /api/workspaces/:workspaceId/tasks
 // @access  Private (Workspace members)
@@ -39,12 +118,41 @@ export const createTask = asyncHandler(async (req, res) => {
   const role = getUserRole(workspace, req.user._id);
   if (!role) throw new AppError('Not authorized', 403);
 
-  // If role is member, they can create a task but it needs approval.
-  // Admins/Owners create pre-approved tasks.
-  const isApproved = role === 'admin' || role === 'owner';
+  // Validate assignment rules at creation time
+  let isApproved = true;
+  let requiresApproval = false;
 
-  // If a member is creating a task, they can't assign it to someone else unless approved?
-  // Let's just create it.
+  if (assignedTo) {
+    const targetRole = getTargetUserRole(workspace, assignedTo);
+    if (!targetRole) {
+      throw new AppError('Target user is not a member of this workspace', 400);
+    }
+
+    if (role === 'owner') {
+      // Owner can assign to anyone - no approval needed
+    } else if (role === 'admin') {
+      // Admin can assign to self and members, NOT owner
+      if (targetRole === 'owner') {
+        throw new AppError('Admins cannot assign tasks to the workspace owner', 403);
+      }
+    } else if (role === 'member') {
+      // Member can assign to self and other members
+      if (targetRole === 'owner' || targetRole === 'admin') {
+        throw new AppError('Members cannot assign tasks to admins or owners', 403);
+      }
+      if (assignedTo.toString() !== req.user._id.toString()) {
+        // Assigning to another member - requires approval
+        requiresApproval = true;
+      }
+    }
+    isApproved = !requiresApproval;
+  } else {
+    // No assignment - member-created tasks need approval by default
+    if (role === 'member') {
+      isApproved = false;
+    }
+  }
+
   const task = await Task.create({
     title,
     description,
