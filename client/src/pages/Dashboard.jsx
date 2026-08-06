@@ -67,9 +67,16 @@ export default function Dashboard() {
     setLoadingMembers(true);
     try {
       const res = await api.get(`/workspaces/${workspaceId}/members`);
-      setMembersData(res.data.data);
+      // Defensive: ensure data structure is correct
+      const data = res.data?.data || { members: [], invites: [] };
+      setMembersData({
+        members: Array.isArray(data.members) ? data.members : [],
+        invites: Array.isArray(data.invites) ? data.invites : [],
+      });
     } catch (err) {
       console.error('Failed to load members:', err);
+      // Reset to empty arrays on error
+      setMembersData({ members: [], invites: [] });
     } finally {
       setLoadingMembers(false);
     }
@@ -80,12 +87,14 @@ export default function Dashboard() {
     loadData()
       .then(({ project: p, tasks: t }) => {
         if (!active) return;
+        console.log('Dashboard loaded:', { project: p, tasksCount: t.length });
         setProject(p);
         setTasks(t);
         setError('');
       })
       .catch((err) => {
         if (!active) return;
+        console.error('Dashboard load error:', err);
         setError(err.response?.data?.message || 'Failed to load project dashboard');
       })
       .finally(() => {
@@ -309,6 +318,20 @@ export default function Dashboard() {
               <RefreshCw size={18} /> Retry
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard: project not loaded yet
+  if (!project) {
+    return (
+      <div className="auth-page">
+        <div className="bg-shape shape-1"></div>
+        <div className="bg-shape shape-2"></div>
+        <div className="glass-card auth-card">
+          <h2 className="auth-title" style={{ fontSize: '1.5rem' }}>Loading project...</h2>
+          <Spinner label="Please wait" />
         </div>
       </div>
     );
