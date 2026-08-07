@@ -5,6 +5,7 @@ import AppError from '../utils/AppError.js';
 
 import User from '../models/User.js';
 import Invite from '../models/Invite.js';
+import { assertNoCrossWorkspaceMembership } from '../utils/workspaceRules.js';
 import crypto from 'crypto';
 
 export const getWorkspace = asyncHandler(async (req, res) => {
@@ -122,6 +123,13 @@ export const inviteMember = asyncHandler(async (req, res) => {
   if (existingUser) {
     const isAlreadyMember = workspace.members.some(m => m.userId.toString() === existingUser._id.toString());
     if (isAlreadyMember) throw new AppError('User is already a member', 400);
+
+    // Prevent one person from being in multiple workspaces of the same company
+    await assertNoCrossWorkspaceMembership({
+      companyId: workspace.companyId,
+      userId: existingUser._id,
+      excludeWorkspaceId: workspace._id,
+    });
   }
 
   // Generate secure token
@@ -170,6 +178,13 @@ export const addMember = asyncHandler(async (req, res) => {
   // Check if already a member
   const isMember = workspace.members.some(m => m.userId.toString() === userToAdd._id.toString());
   if (isMember) throw new AppError('User is already a member of this workspace', 400);
+
+  // Prevent one person from being in multiple workspaces of the same company
+  await assertNoCrossWorkspaceMembership({
+    companyId: workspace.companyId,
+    userId: userToAdd._id,
+    excludeWorkspaceId: workspace._id,
+  });
 
   workspace.members.push({
     userId: userToAdd._id,

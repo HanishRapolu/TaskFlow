@@ -62,6 +62,7 @@ import Invite from '../models/Invite.js';
 import Workspace from '../models/Workspace.js';
 import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
+import { assertNoCrossWorkspaceMembership } from '../utils/workspaceRules.js';
 import jwt from 'jsonwebtoken';
 
 // Generate Token helper for registerInvited (since authService.registerUser handles it for normal users, we'll need it here)
@@ -124,6 +125,13 @@ export const registerInvited = asyncHandler(async (req, res) => {
   // Add to Workspace
   const workspace = await Workspace.findById(invite.workspaceId);
   if (workspace) {
+    // Prevent one person from being in multiple workspaces of the same company
+    await assertNoCrossWorkspaceMembership({
+      companyId: workspace.companyId,
+      userId: user._id,
+      excludeWorkspaceId: workspace._id,
+    });
+
     workspace.members.push({
       userId: user._id,
       role: invite.role

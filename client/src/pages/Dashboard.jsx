@@ -385,9 +385,9 @@ export default function Dashboard() {
     },
     {
       key: 'members',
-      label: 'Members & Invites',
+      label: canManage ? 'Members & Invites' : 'Members',
       icon: Users,
-      show: canManage,
+      show: true,
     },
     {
       key: 'settings',
@@ -560,13 +560,15 @@ export default function Dashboard() {
           </div>
         )}
 
-        {activeTab === 'members' && canManage && (
+        {activeTab === 'members' && (
           <div>
             <div className="view-header">
               <div>
-                <h2><Users size={24} /> Members & Invites</h2>
+                <h2><Users size={24} /> {canManage ? 'Members & Invites' : 'Members'}</h2>
                 <p className="view-subtitle">
-                  Invite teammates by email or add people who already have a TaskFlow account
+                  {canManage
+                    ? 'Invite teammates by email or add people who already have a TaskFlow account'
+                    : 'Everyone in this project workspace'}
                 </p>
               </div>
             </div>
@@ -617,6 +619,8 @@ export default function Dashboard() {
               )}
             </div>
 
+            {canManage && (
+              <>
             {membersData.invites.length > 0 && (
               <div className="glass-card panel">
                 <div className="panel-title"><Mail size={20} /> Pending invites</div>
@@ -770,6 +774,8 @@ export default function Dashboard() {
                 <div className="permission-item"><User size={16} /> <span><strong>Member</strong> — create & work on tasks, update status of assigned work</span></div>
               </div>
             </div>
+              </>
+            )}
           </div>
         )}
 
