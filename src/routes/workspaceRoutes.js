@@ -6,6 +6,7 @@ import {
   getWorkspaceMembers,
   removeMember,
   deleteWorkspace,
+  deleteInvite,
 } from '../controllers/workspaceController.js';
 import { protect } from '../middleware/protect.js';
 import authorizeWorkspace from '../middleware/authorizeWorkspace.js';
@@ -26,6 +27,9 @@ router.delete('/:workspaceId/members/:userId', protect, authorizeWorkspace('owne
 
 // Route for sending a secure email invite
 router.post('/:workspaceId/invite', protect, authorizeWorkspace('owner', 'admin'), inviteMember);
+
+// Route for revoking a pending invite
+router.delete('/:workspaceId/invites/:inviteId', protect, authorizeWorkspace('owner', 'admin'), deleteInvite);
 
 // Route for deleting a workspace (Owner only)
 router.delete('/:workspaceId', protect, authorizeWorkspace('owner'), deleteWorkspace);

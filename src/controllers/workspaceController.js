@@ -197,6 +197,28 @@ export const addMember = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Member added successfully', data: workspace });
 });
 
+// @desc    Revoke a pending invite
+// @route   DELETE /api/workspaces/:workspaceId/invites/:inviteId
+// @access  Private (Owner/Admin)
+export const deleteInvite = asyncHandler(async (req, res) => {
+  const { workspaceId, inviteId } = req.params;
+
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw new AppError('Workspace not found', 404);
+
+  const requester = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
+  if (!requester || (requester.role !== 'owner' && requester.role !== 'admin')) {
+    throw new AppError('Not authorized', 403);
+  }
+
+  const invite = await Invite.findOne({ _id: inviteId, workspaceId });
+  if (!invite) throw new AppError('Invite not found or already used', 404);
+
+  await Invite.findByIdAndDelete(invite._id);
+
+  res.status(200).json({ success: true, message: 'Invite revoked successfully' });
+});
+
 // @desc    Remove a member/admin from the workspace
 // @route   DELETE /api/workspaces/:workspaceId/members/:userId
 // @access  Private (Owner can remove members/admins, Admin can remove members)

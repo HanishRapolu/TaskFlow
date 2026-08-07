@@ -63,6 +63,9 @@ export default function Dashboard() {
   const [deleteWsOpen, setDeleteWsOpen] = useState(false);
   const [deletingWs, setDeletingWs] = useState(false);
 
+  const [deleteInviteTarget, setDeleteInviteTarget] = useState(null);
+  const [deletingInvite, setDeletingInvite] = useState(false);
+
   const canManage = project?.role === 'admin' || project?.role === 'owner';
   const isOwner = project?.role === 'owner';
 
@@ -373,6 +376,24 @@ export default function Dashboard() {
       setDeleteWsOpen(false);
     } finally {
       setDeletingWs(false);
+    }
+  };
+
+  const handleDeleteInvite = async () => {
+    if (!deleteInviteTarget) return;
+    setDeletingInvite(true);
+    try {
+      await api.delete(`/workspaces/${workspaceId}/invites/${deleteInviteTarget._id}`);
+      setMembersData((prev) => ({
+        ...prev,
+        invites: prev.invites.filter((i) => i._id !== deleteInviteTarget._id),
+      }));
+      toast.success(`Invite to ${deleteInviteTarget.email} revoked.`);
+      setDeleteInviteTarget(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not revoke the invite.');
+    } finally {
+      setDeletingInvite(false);
     }
   };
 
@@ -703,6 +724,7 @@ export default function Dashboard() {
                         <th>Invited by</th>
                         <th>Expires</th>
                         <th>Status</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -721,6 +743,16 @@ export default function Dashboard() {
                           <td>{invite.invitedBy?.name || invite.invitedBy?.email || 'Unknown'}</td>
                           <td>{new Date(invite.expiresAt).toLocaleDateString()}</td>
                           <td><span className="badge status-pending">Pending</span></td>
+                          <td>
+                            <button
+                              className="icon-btn danger"
+                              onClick={() => setDeleteInviteTarget(invite)}
+                              title={`Revoke invite to ${invite.email}`}
+                              aria-label={`Revoke invite to ${invite.email}`}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1049,6 +1081,34 @@ export default function Dashboard() {
           <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
             Remove <strong style={{ color: 'var(--text-primary)' }}>{removeTarget?.name}</strong> from this
             workspace? Their assigned tasks will be unassigned and they will be notified by email.
+          </p>
+        </div>
+      </Modal>
+
+      {/* Revoke invite confirm modal */}
+      <Modal
+        open={!!deleteInviteTarget}
+        onClose={() => setDeleteInviteTarget(null)}
+        title="Revoke invite"
+        icon={<Trash2 size={20} style={{ color: 'var(--danger)' }} />}
+        footer={
+          <>
+            <button className="modern-btn secondary" onClick={() => setDeleteInviteTarget(null)}>Cancel</button>
+            <button className="modern-btn danger" onClick={handleDeleteInvite} disabled={deletingInvite}>
+              {deletingInvite ? <span className="spinner sm"></span> : <Trash2 size={16} />}
+              {deletingInvite ? 'Revoking...' : 'Revoke invite'}
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          <div className="auth-error" style={{ marginBottom: 0 }}>
+            <AlertTriangle size={18} />
+            <span>This cannot be undone.</span>
+          </div>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            Revoke the pending invite for <strong style={{ color: 'var(--text-primary)' }}>{deleteInviteTarget?.email}</strong>?
+            Their invite link will stop working immediately.
           </p>
         </div>
       </Modal>
