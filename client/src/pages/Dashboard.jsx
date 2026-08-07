@@ -107,10 +107,8 @@ export default function Dashboard() {
   }, [loadData]);
 
   useEffect(() => {
-    if (canManage) {
-      loadMembers();
-    }
-  }, [canManage, loadMembers]);
+    loadMembers();
+  }, [loadMembers]);
 
   const handleRetry = async () => {
     setError('');
@@ -135,15 +133,20 @@ export default function Dashboard() {
     [project, user, canManage]
   );
 
-  const knownMembers = useMemo(() => {
+  const workspaceMembers = useMemo(() => {
     const map = new Map();
-    if (user?._id) map.set(user._id, { _id: user._id, name: user.name, email: user.email });
-    tasks.forEach((t) => {
-      if (t.assignedTo?._id) map.set(t.assignedTo._id, t.assignedTo);
-      if (t.createdBy?._id) map.set(t.createdBy._id, t.createdBy);
-    });
+    if (user?._id) map.set(user._id, { _id: user._id, name: user.name, email: user.email, role: project?.role });
+    membersData.members.forEach((m) => map.set(m._id, m));
     return Array.from(map.values());
-  }, [tasks, user]);
+  }, [membersData, user, project?.role]);
+
+  // Who can the current user assign tasks to?
+  // Owner -> everyone. Admin -> self + members. Member -> self + members.
+  const assignableMembers = useMemo(() => {
+    if (!project?.role) return [];
+    if (project.role === 'owner') return workspaceMembers;
+    return workspaceMembers.filter((m) => m.role === 'member' || m._id === user?._id);
+  }, [workspaceMembers, project?.role, user?._id]);
 
   const stats = useMemo(() => {
     const pending = tasks.filter((t) => t.status === 'Pending').length;
@@ -228,6 +231,22 @@ export default function Dashboard() {
       toast.success('Task approved.');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not approve the task.');
+    }
+  };
+
+  const handleAssign = async (task, assignedTo) => {
+    try {
+      const { data } = await api.put(`/workspaces/${workspaceId}/tasks/${task._id}/assign`, {
+        assignedTo: assignedTo || null,
+      });
+      replaceTask(data);
+      if (!data.isApproved) {
+        toast.info('Assignment made. An Admin or Owner needs to approve it before it becomes active.');
+      } else {
+        toast.success('Task assigned.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not reassign the task.');
     }
   };
 
@@ -517,7 +536,10 @@ export default function Dashboard() {
                     canManage={canManage}
                     canUpdateStatus={canUpdateStatus(task)}
                     isAssignee={user?._id === task.assignedTo?._id}
+                    members={assignableMembers}
+                    currentUserId={user?._id}
                     onStatusChange={handleStatusChange}
+                    onAssign={handleAssign}
                     onApprove={handleApprove}
                     onDelete={setDeleteTarget}
                   />
@@ -861,7 +883,7 @@ export default function Dashboard() {
                 onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
               >
                 <option value="">Unassigned</option>
-                {knownMembers.map((m) => (
+                {assignableMembers.map((m) => (
                   <option key={m._id} value={m._id}>
                     {m._id === user?._id ? 'You' : m.name}
                   </option>
@@ -871,7 +893,7 @@ export default function Dashboard() {
           </div>
           {!canManage && (
             <p className="panel-sub" style={{ marginBottom: 0, fontSize: '0.8rem' }}>
-              As a Member, your new task will need approval from an Admin or Owner.
+              As a Member you can assign to yourself or other Members. Assigning a task to another Member requires approval from an Admin or Owner.
             </p>
           )}
         </form>

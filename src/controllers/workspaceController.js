@@ -38,7 +38,10 @@ export const getWorkspaceMembers = asyncHandler(async (req, res) => {
   if (!workspace) throw new AppError('Workspace not found', 404);
 
   // Check if user is a member
-  const requester = workspace.members.find(m => m.userId._id.toString() === req.user._id.toString());
+  const requester = workspace.members.find(m => {
+    const uid = m.userId?._id || m.userId;
+    return uid && uid.toString() === req.user._id.toString();
+  });
   if (!requester) throw new AppError('Not authorized', 403);
 
   // Get pending invites
@@ -48,15 +51,20 @@ export const getWorkspaceMembers = asyncHandler(async (req, res) => {
   }).select('email role invitedBy expiresAt createdAt').populate('invitedBy', 'name email');
 
   // Format members
-  const members = workspace.members.map(m => ({
-    _id: m.userId._id,
-    name: m.userId.name,
-    email: m.userId.email,
-    avatar: m.userId.avatar,
-    role: m.role,
-    joinedAt: m.joinedAt,
-    status: 'active',
-  }));
+  const members = workspace.members
+    .filter(m => m.userId && (m.userId._id || m.userId))
+    .map(m => {
+      const u = m.userId._id ? m.userId : { _id: m.userId };
+      return {
+        _id: u._id,
+        name: u.name,
+        email: u.email,
+        avatar: u.avatar,
+        role: m.role,
+        joinedAt: m.joinedAt,
+        status: 'active',
+      };
+    });
 
   // Format pending invites
   const invites = pendingInvites.map(invite => ({

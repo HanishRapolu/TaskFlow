@@ -6,8 +6,10 @@ const STATUS_ICONS = {
   'Completed': CheckCircle2,
 };
 
-export default function TaskCard({ task, canManage, canUpdateStatus, isAssignee, onStatusChange, onApprove, onDelete }) {
+export default function TaskCard({ task, canManage, canUpdateStatus, isAssignee, members, currentUserId, onStatusChange, onAssign, onApprove, onDelete }) {
   const StatusIcon = STATUS_ICONS[task.status] || Hourglass;
+
+  const assigneeInList = task.assignedTo?._id && members?.some((m) => m._id === task.assignedTo._id);
 
   return (
     <div className="glass-card task-card" data-status={task.status}>
@@ -58,6 +60,29 @@ export default function TaskCard({ task, canManage, canUpdateStatus, isAssignee,
         </div>
 
         <div className="task-actions">
+          {members && onAssign && (
+            <div className="select-wrap" style={{ minWidth: 140 }}>
+              <select
+                className="modern-select"
+                value={task.assignedTo?._id || ''}
+                onChange={(e) => onAssign(task, e.target.value)}
+                aria-label={`Assign ${task.title}`}
+              >
+                <option value="">Unassigned</option>
+                {task.assignedTo && !assigneeInList && (
+                  <option value={task.assignedTo._id} disabled>
+                    {task.assignedTo.name}
+                  </option>
+                )}
+                {members.map((m) => (
+                  <option key={m._id} value={m._id}>
+                    {m._id === currentUserId ? 'You' : m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {!task.isApproved && canManage && (
             <button className="modern-btn success sm" onClick={() => onApprove(task)} title="Approve task">
               <BadgeCheck size={14} />
