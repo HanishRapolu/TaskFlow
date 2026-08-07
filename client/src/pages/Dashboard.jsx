@@ -177,9 +177,20 @@ export default function Dashboard() {
     return list;
   }, [tasks, search, statusFilter, approvalFilter]);
 
-  const replaceTask = useCallback(
-    (updated) => setTasks((prev) => prev.map((t) => (t._id === updated._id ? updated : t))),
-    []
+  const applyTaskUpdate = useCallback(
+    (updated) => {
+      setTasks((prev) => {
+        // Tasks awaiting approval are hidden from regular members until an Admin/Owner approves them
+        if (!canManage && !updated.isApproved) {
+          return prev.filter((t) => t._id !== updated._id);
+        }
+        const exists = prev.some((t) => t._id === updated._id);
+        return exists
+          ? prev.map((t) => (t._id === updated._id ? updated : t))
+          : [updated, ...prev];
+      });
+    },
+    [canManage]
   );
 
   const handleCreateTask = async (e) => {
@@ -196,11 +207,11 @@ export default function Dashboard() {
         description: newTask.description.trim(),
         assignedTo: newTask.assignedTo || undefined,
       });
-      setTasks((prev) => [data, ...prev]);
+      applyTaskUpdate(data);
       setCreateOpen(false);
       setNewTask({ title: '', description: '', assignedTo: '' });
       if (!data.isApproved) {
-        toast.info('Task created. An admin needs to approve it before it is active.');
+        toast.info('Task created. An admin needs to approve it before it becomes visible to the team.');
       } else {
         toast.success('Task created successfully.');
       }
@@ -213,13 +224,13 @@ export default function Dashboard() {
 
   const handleStatusChange = async (task, status) => {
     const prev = task.status;
-    replaceTask({ ...task, status });
+    applyTaskUpdate({ ...task, status });
     try {
       const { data } = await api.put(`/workspaces/${workspaceId}/tasks/${task._id}/status`, { status });
-      replaceTask(data);
+      applyTaskUpdate(data);
       toast.success(`Task moved to "${status}".`);
     } catch (err) {
-      replaceTask({ ...task, status: prev });
+      applyTaskUpdate({ ...task, status: prev });
       toast.error(err.response?.data?.message || 'Could not update the task status.');
     }
   };
@@ -227,7 +238,7 @@ export default function Dashboard() {
   const handleApprove = async (task) => {
     try {
       const { data } = await api.put(`/workspaces/${workspaceId}/tasks/${task._id}/approve`);
-      replaceTask(data);
+      applyTaskUpdate(data);
       toast.success('Task approved.');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not approve the task.');
@@ -249,7 +260,7 @@ export default function Dashboard() {
       const { data } = await api.put(`/workspaces/${workspaceId}/tasks/${task._id}/assign`, {
         assignedTo: assignedTo || null,
       });
-      replaceTask(data);
+      applyTaskUpdate(data);
       if (!data.isApproved) {
         toast.info('Assignment made. An Admin or Owner needs to approve it before it becomes active.');
       } else {
@@ -946,3 +957,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

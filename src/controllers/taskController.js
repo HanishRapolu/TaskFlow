@@ -97,11 +97,17 @@ export const getTasks = asyncHandler(async (req, res) => {
   const workspace = await Workspace.findById(workspaceId);
   if (!workspace) throw new AppError('Workspace not found', 404);
   
-  if (!getUserRole(workspace, req.user._id)) {
+  const requesterRole = getUserRole(workspace, req.user._id);
+  if (!requesterRole) {
     throw new AppError('Not authorized to view tasks in this project', 403);
   }
 
-  const tasks = await Task.find({ workspaceId }).populate('assignedTo', 'name email').populate('createdBy', 'name email').sort('-createdAt');
+  // Tasks awaiting approval are only visible to Admins and Owners.
+  // Regular members only see tasks once they are approved.
+  const query = { workspaceId };
+  if (requesterRole === 'member') query.isApproved = true;
+
+  const tasks = await Task.find(query).populate('assignedTo', 'name email').populate('createdBy', 'name email').sort('-createdAt');
   res.json(tasks);
 });
 
