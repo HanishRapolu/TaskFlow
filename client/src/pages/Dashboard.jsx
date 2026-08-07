@@ -236,9 +236,9 @@ export default function Dashboard() {
 
   const handleReject = async (task) => {
     try {
-      const { data } = await api.put(`/workspaces/${workspaceId}/tasks/${task._id}/reject`);
-      replaceTask(data);
-      toast.error('Assignment rejected. The task has been unassigned.');
+      await api.put(`/workspaces/${workspaceId}/tasks/${task._id}/reject`);
+      setTasks((prev) => prev.filter((t) => t._id !== task._id));
+      toast.error('Assignment rejected. The task has been deleted.');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not reject the task.');
     }

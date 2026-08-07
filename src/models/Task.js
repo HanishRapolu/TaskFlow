@@ -34,10 +34,6 @@ const taskSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    rejected: {
-      type: Boolean,
-      default: false,
-    },
   },
   {
     timestamps: true,

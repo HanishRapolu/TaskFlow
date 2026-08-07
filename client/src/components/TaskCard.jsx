@@ -31,12 +31,7 @@ export default function TaskCard({ task, canManage, canUpdateStatus, isAssignee,
           <StatusIcon size={13} />
           {task.status}
         </span>
-        {task.rejected ? (
-          <span className="badge status-rejected">
-            <XCircle size={13} />
-            Rejected
-          </span>
-        ) : task.isApproved ? (
+        {task.isApproved ? (
           <span className="badge approved">
             <BadgeCheck size={13} />
             Approved
@@ -88,13 +83,13 @@ export default function TaskCard({ task, canManage, canUpdateStatus, isAssignee,
             </div>
           )}
 
-          {!task.isApproved && !task.rejected && canManage && (
+          {!task.isApproved && canManage && (
             <>
               <button className="modern-btn success sm" onClick={() => onApprove(task)} title="Approve task">
                 <BadgeCheck size={14} />
                 Approve
               </button>
-              <button className="modern-btn danger sm" onClick={() => onReject(task)} title="Reject task assignment">
+              <button className="modern-btn danger sm" onClick={() => onReject(task)} title="Reject and delete task">
                 <XCircle size={14} />
                 Reject
               </button>

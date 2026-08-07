@@ -82,7 +82,6 @@ export const assignTask = asyncHandler(async (req, res) => {
 
     task.assignedTo = assignedTo;
     task.isApproved = !requiresApproval;
-    task.rejected = false;
     await task.save();
 
   const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name email').populate('createdBy', 'name email');
@@ -211,7 +210,6 @@ export const approveTask = asyncHandler(async (req, res) => {
   if (!task) throw new AppError('Task not found', 404);
 
   task.isApproved = true;
-  task.rejected = false;
   await task.save();
 
   const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name email').populate('createdBy', 'name email');
@@ -233,13 +231,9 @@ export const rejectTask = asyncHandler(async (req, res) => {
   const task = await Task.findById(taskId);
   if (!task) throw new AppError('Task not found', 404);
 
-  task.rejected = true;
-  task.isApproved = true; // No longer awaiting approval
-  task.assignedTo = null; // Undo the pending assignment
-  await task.save();
+  await Task.deleteOne({ _id: task._id });
 
-  const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name email').populate('createdBy', 'name email');
-  res.json(populatedTask);
+  res.json({ success: true, message: 'Task rejected and deleted' });
 });
 
 // @desc    Delete a task
