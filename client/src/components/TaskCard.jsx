@@ -1,4 +1,4 @@
-import { Hourglass, RefreshCw, CheckCircle2, User, Trash2, BadgeCheck, AlertTriangle, UserPlus } from 'lucide-react';
+import { Hourglass, RefreshCw, CheckCircle2, User, Trash2, BadgeCheck, AlertTriangle, UserPlus, XCircle } from 'lucide-react';
 
 const STATUS_ICONS = {
   'Pending': Hourglass,
@@ -6,7 +6,7 @@ const STATUS_ICONS = {
   'Completed': CheckCircle2,
 };
 
-export default function TaskCard({ task, canManage, canUpdateStatus, isAssignee, members, currentUserId, onStatusChange, onAssign, onApprove, onDelete }) {
+export default function TaskCard({ task, canManage, canUpdateStatus, isAssignee, members, currentUserId, onStatusChange, onAssign, onApprove, onReject, onDelete }) {
   const StatusIcon = STATUS_ICONS[task.status] || Hourglass;
 
   const assigneeInList = task.assignedTo?._id && members?.some((m) => m._id === task.assignedTo._id);
@@ -31,7 +31,12 @@ export default function TaskCard({ task, canManage, canUpdateStatus, isAssignee,
           <StatusIcon size={13} />
           {task.status}
         </span>
-        {task.isApproved ? (
+        {task.rejected ? (
+          <span className="badge status-rejected">
+            <XCircle size={13} />
+            Rejected
+          </span>
+        ) : task.isApproved ? (
           <span className="badge approved">
             <BadgeCheck size={13} />
             Approved
@@ -83,11 +88,17 @@ export default function TaskCard({ task, canManage, canUpdateStatus, isAssignee,
             </div>
           )}
 
-          {!task.isApproved && canManage && (
-            <button className="modern-btn success sm" onClick={() => onApprove(task)} title="Approve task">
-              <BadgeCheck size={14} />
-              Approve
-            </button>
+          {!task.isApproved && !task.rejected && canManage && (
+            <>
+              <button className="modern-btn success sm" onClick={() => onApprove(task)} title="Approve task">
+                <BadgeCheck size={14} />
+                Approve
+              </button>
+              <button className="modern-btn danger sm" onClick={() => onReject(task)} title="Reject task assignment">
+                <XCircle size={14} />
+                Reject
+              </button>
+            </>
           )}
 
           {canUpdateStatus && (

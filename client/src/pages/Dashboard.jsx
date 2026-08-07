@@ -234,6 +234,16 @@ export default function Dashboard() {
     }
   };
 
+  const handleReject = async (task) => {
+    try {
+      const { data } = await api.put(`/workspaces/${workspaceId}/tasks/${task._id}/reject`);
+      replaceTask(data);
+      toast.error('Assignment rejected. The task has been unassigned.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not reject the task.');
+    }
+  };
+
   const handleAssign = async (task, assignedTo) => {
     try {
       const { data } = await api.put(`/workspaces/${workspaceId}/tasks/${task._id}/assign`, {
@@ -541,6 +551,7 @@ export default function Dashboard() {
                     onStatusChange={handleStatusChange}
                     onAssign={handleAssign}
                     onApprove={handleApprove}
+                    onReject={handleReject}
                     onDelete={setDeleteTarget}
                   />
                 ))}

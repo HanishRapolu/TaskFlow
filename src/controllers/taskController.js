@@ -80,9 +80,10 @@ export const assignTask = asyncHandler(async (req, res) => {
     // Assigning to self - no approval needed
   }
 
-  task.assignedTo = assignedTo;
-  task.isApproved = !requiresApproval;
-  await task.save();
+    task.assignedTo = assignedTo;
+    task.isApproved = !requiresApproval;
+    task.rejected = false;
+    await task.save();
 
   const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name email').populate('createdBy', 'name email');
   res.json(populatedTask);
@@ -210,6 +211,31 @@ export const approveTask = asyncHandler(async (req, res) => {
   if (!task) throw new AppError('Task not found', 404);
 
   task.isApproved = true;
+  task.rejected = false;
+  await task.save();
+
+  const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name email').populate('createdBy', 'name email');
+  res.json(populatedTask);
+});
+
+// @desc    Reject a task assignment
+// @route   PUT /api/workspaces/:workspaceId/tasks/:taskId/reject
+// @access  Private (Admins/Owners)
+export const rejectTask = asyncHandler(async (req, res) => {
+  const { workspaceId, taskId } = req.params;
+
+  const workspace = await Workspace.findById(workspaceId);
+  const role = getUserRole(workspace, req.user._id);
+  if (role !== 'admin' && role !== 'owner') {
+    throw new AppError('Only Admins or Owners can reject tasks', 403);
+  }
+
+  const task = await Task.findById(taskId);
+  if (!task) throw new AppError('Task not found', 404);
+
+  task.rejected = true;
+  task.isApproved = true; // No longer awaiting approval
+  task.assignedTo = null; // Undo the pending assignment
   await task.save();
 
   const populatedTask = await Task.findById(task._id).populate('assignedTo', 'name email').populate('createdBy', 'name email');
