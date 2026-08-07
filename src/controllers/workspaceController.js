@@ -194,6 +194,9 @@ export const addMember = asyncHandler(async (req, res) => {
 
   await workspace.save();
 
+  // Clear any pending invite for this email so it doesn't linger after they've joined
+  await Invite.deleteOne({ workspaceId, email: userToAdd.email });
+
   res.status(200).json({ success: true, message: 'Member added successfully', data: workspace });
 });
 

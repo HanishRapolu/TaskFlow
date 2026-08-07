@@ -106,7 +106,7 @@ export const registerInvited = asyncHandler(async (req, res) => {
 
   if (!invite) throw new AppError('Invite link is invalid or has expired', 400);
 
-  let user = await User.findOne({ email: invite.email });
+  let user = await User.findOne({ email: invite.email }).select('+password');
   
   if (user) {
     // User exists, verify their password to accept the invite
@@ -125,18 +125,21 @@ export const registerInvited = asyncHandler(async (req, res) => {
   // Add to Workspace
   const workspace = await Workspace.findById(invite.workspaceId);
   if (workspace) {
-    // Prevent one person from being in multiple workspaces of the same company
-    await assertNoCrossWorkspaceMembership({
-      companyId: workspace.companyId,
-      userId: user._id,
-      excludeWorkspaceId: workspace._id,
-    });
+    const alreadyMember = workspace.members.some(m => m.userId.toString() === user._id.toString());
+    if (!alreadyMember) {
+      // Prevent one person from being in multiple workspaces of the same company
+      await assertNoCrossWorkspaceMembership({
+        companyId: workspace.companyId,
+        userId: user._id,
+        excludeWorkspaceId: workspace._id,
+      });
 
-    workspace.members.push({
-      userId: user._id,
-      role: invite.role
-    });
-    await workspace.save();
+      workspace.members.push({
+        userId: user._id,
+        role: invite.role
+      });
+      await workspace.save();
+    }
   }
 
   // Delete the invite so it can't be reused

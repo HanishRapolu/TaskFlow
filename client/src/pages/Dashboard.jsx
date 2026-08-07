@@ -331,6 +331,10 @@ export default function Dashboard() {
         role: addMember.role,
       });
       toast.success(`${addMember.email.trim()} added to the project.`);
+      setMembersData((prev) => ({
+        ...prev,
+        invites: prev.invites.filter((i) => i.email !== addMember.email.trim().toLowerCase()),
+      }));
       setAddMember({ email: '', role: 'member' });
     } catch (err) {
       setAddError(err.response?.data?.message || 'Could not add the member.');
@@ -384,15 +388,19 @@ export default function Dashboard() {
     setDeletingInvite(true);
     try {
       await api.delete(`/workspaces/${workspaceId}/invites/${deleteInviteTarget._id}`);
+      toast.success(`Invite to ${deleteInviteTarget.email} revoked.`);
+    } catch (err) {
+      if (err.response?.status === 404) {
+        toast.info('That invite was already revoked or accepted.');
+      } else {
+        toast.error(err.response?.data?.message || 'Could not revoke the invite.');
+      }
+    } finally {
       setMembersData((prev) => ({
         ...prev,
         invites: prev.invites.filter((i) => i._id !== deleteInviteTarget._id),
       }));
-      toast.success(`Invite to ${deleteInviteTarget.email} revoked.`);
       setDeleteInviteTarget(null);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not revoke the invite.');
-    } finally {
       setDeletingInvite(false);
     }
   };
