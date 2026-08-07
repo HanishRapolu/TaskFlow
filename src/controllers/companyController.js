@@ -56,3 +56,9 @@ export const createWorkspace = asyncHandler(async (req, res) => {
     },
   });
 });
+
+export const deleteCompany = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  await companyService.deleteCompany(companyId, req.user._id);
+  res.status(200).json({ success: true, message: 'Company deleted successfully' });
+});

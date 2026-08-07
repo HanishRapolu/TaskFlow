@@ -5,6 +5,7 @@ import AppError from '../utils/AppError.js';
 
 import User from '../models/User.js';
 import Invite from '../models/Invite.js';
+import Task from '../models/Task.js';
 import { assertNoCrossWorkspaceMembership } from '../utils/workspaceRules.js';
 import crypto from 'crypto';
 
@@ -194,4 +195,78 @@ export const addMember = asyncHandler(async (req, res) => {
   await workspace.save();
 
   res.status(200).json({ success: true, message: 'Member added successfully', data: workspace });
+});
+
+// @desc    Remove a member/admin from the workspace
+// @route   DELETE /api/workspaces/:workspaceId/members/:userId
+// @access  Private (Owner can remove members/admins, Admin can remove members)
+export const removeMember = asyncHandler(async (req, res) => {
+  const { workspaceId, userId } = req.params;
+
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw new AppError('Workspace not found', 404);
+
+  const requester = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
+  if (!requester) throw new AppError('Not authorized', 403);
+
+  const target = workspace.members.find(m => m.userId.toString() === userId.toString());
+  if (!target) throw new AppError('User is not a member of this workspace', 404);
+
+  if (target.role === 'owner') {
+    throw new AppError('The workspace owner cannot be removed', 400);
+  }
+  if (userId.toString() === req.user._id.toString()) {
+    throw new AppError('You cannot remove yourself from the workspace', 400);
+  }
+  if (requester.role === 'admin' && target.role !== 'member') {
+    throw new AppError('Admins can only remove Members', 403);
+  }
+
+  // Unassign any tasks assigned to the removed user
+  await Task.updateMany({ workspaceId, assignedTo: userId }, { $set: { assignedTo: null } });
+
+  workspace.members = workspace.members.filter(m => m.userId.toString() !== userId.toString());
+  await workspace.save();
+
+  const removedUser = await User.findById(userId).select('name email');
+  if (removedUser?.email) {
+    await taskQueue.add('sendMemberRemoved', {
+      email: removedUser.email,
+      workspaceName: workspace.name,
+    });
+  }
+
+  res.status(200).json({ success: true, message: 'Member removed successfully' });
+});
+
+// @desc    Delete a workspace (Owner only)
+// @route   DELETE /api/workspaces/:workspaceId
+// @access  Private (Owner)
+export const deleteWorkspace = asyncHandler(async (req, res) => {
+  const { workspaceId } = req.params;
+
+  const workspace = await Workspace.findById(workspaceId).populate('members.userId', 'name email');
+  if (!workspace) throw new AppError('Workspace not found', 404);
+
+  const requester = workspace.members.find(m => m.userId.toString() === req.user._id.toString());
+  if (!requester || requester.role !== 'owner') {
+    throw new AppError('Only the workspace owner can delete the workspace', 403);
+  }
+
+  // Notify the rest of the team before deletion
+  for (const m of workspace.members) {
+    const u = m.userId;
+    if (u && u._id && u._id.toString() !== req.user._id.toString() && u.email) {
+      await taskQueue.add('sendWorkspaceDeleted', {
+        email: u.email,
+        workspaceName: workspace.name,
+      });
+    }
+  }
+
+  await Task.deleteMany({ workspaceId });
+  await Invite.deleteMany({ workspaceId });
+  await Workspace.findByIdAndDelete(workspaceId);
+
+  res.status(200).json({ success: true, message: 'Workspace deleted successfully' });
 });

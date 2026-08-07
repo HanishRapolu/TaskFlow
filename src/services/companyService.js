@@ -1,5 +1,6 @@
 import companyRepository from '../repositories/companyRepository.js';
 import AppError from '../utils/AppError.js';
+import { taskQueue } from '../config/queue.js';
 
 class CompanyService {
   async getMyCompany(userId) {
@@ -64,6 +65,37 @@ class CompanyService {
       description: data.description,
       ownerId: userId,
     });
+  }
+
+  async deleteCompany(companyId, userId) {
+    const company = await this.getCompany(companyId, userId);
+    const workspaces = await companyRepository.getWorkspacesWithMembers(company._id);
+    const workspaceIds = workspaces.map((ws) => ws._id);
+
+    // Send a thank-you email to every person across the company (except the owner)
+    const emailSet = new Set();
+    workspaces.forEach((ws) => {
+      ws.members.forEach((m) => {
+        const u = m.userId;
+        if (u && u._id && u._id.toString() !== userId.toString() && u.email) {
+          emailSet.add(u.email);
+        }
+      });
+    });
+
+    for (const email of emailSet) {
+      await taskQueue.add('sendCompanyDeleted', {
+        email,
+        companyName: company.name,
+      });
+    }
+
+    await companyRepository.deleteCompanyData({
+      companyId: company._id,
+      workspaceIds,
+    });
+
+    return { companyId: company._id };
   }
 }
 

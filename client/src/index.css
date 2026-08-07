@@ -1219,6 +1219,10 @@ button {
   margin-bottom: 1.6rem;
 }
 
+.danger-panel {
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
 .panel-title {
   font-size: 1.15rem;
   font-weight: 700;

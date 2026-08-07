@@ -1,5 +1,7 @@
 import Company from '../models/Company.js';
 import Workspace from '../models/Workspace.js';
+import Task from '../models/Task.js';
+import Invite from '../models/Invite.js';
 
 class CompanyRepository {
   async findByOwner(ownerId) {
@@ -21,6 +23,17 @@ class CompanyRepository {
 
   async getWorkspaces(companyId) {
     return await Workspace.find({ companyId });
+  }
+
+  async getWorkspacesWithMembers(companyId) {
+    return await Workspace.find({ companyId }).populate('members.userId', 'name email');
+  }
+
+  async deleteCompanyData({ companyId, workspaceIds }) {
+    await Task.deleteMany({ workspaceId: { $in: workspaceIds } });
+    await Invite.deleteMany({ workspaceId: { $in: workspaceIds } });
+    await Workspace.deleteMany({ _id: { $in: workspaceIds } });
+    await Company.findByIdAndDelete(companyId);
   }
 
   async createWorkspace(companyId, { name, description, ownerId }) {

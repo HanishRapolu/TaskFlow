@@ -57,6 +57,12 @@ export default function Dashboard() {
   const [membersData, setMembersData] = useState({ members: [], invites: [] });
   const [loadingMembers, setLoadingMembers] = useState(false);
 
+  const [removeTarget, setRemoveTarget] = useState(null);
+  const [removing, setRemoving] = useState(false);
+
+  const [deleteWsOpen, setDeleteWsOpen] = useState(false);
+  const [deletingWs, setDeletingWs] = useState(false);
+
   const canManage = project?.role === 'admin' || project?.role === 'owner';
   const isOwner = project?.role === 'owner';
 
@@ -330,6 +336,46 @@ export default function Dashboard() {
     }
   };
 
+  const canRemoveMember = (member) => {
+    if (member.role === 'owner') return false;
+    if (member._id === user?._id) return false;
+    if (project?.role === 'owner') return true;
+    if (project?.role === 'admin') return member.role === 'member';
+    return false;
+  };
+
+  const handleRemoveMember = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    try {
+      await api.delete(`/workspaces/${workspaceId}/members/${removeTarget._id}`);
+      setMembersData((prev) => ({
+        ...prev,
+        members: prev.members.filter((m) => m._id !== removeTarget._id),
+      }));
+      toast.success(`${removeTarget.name} removed from the project.`);
+      setRemoveTarget(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not remove the member.');
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  const handleDeleteWorkspace = async () => {
+    setDeletingWs(true);
+    try {
+      await api.delete(`/workspaces/${workspaceId}`);
+      toast.success('Workspace deleted.');
+      navigate('/select-workspace');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not delete the workspace.');
+      setDeleteWsOpen(false);
+    } finally {
+      setDeletingWs(false);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -599,6 +645,7 @@ export default function Dashboard() {
                         <th>Email</th>
                         <th>Role</th>
                         <th>Joined</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -622,6 +669,18 @@ export default function Dashboard() {
                             </span>
                           </td>
                           <td>{member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : '—'}</td>
+                          <td>
+                            {canRemoveMember(member) && (
+                              <button
+                                className="icon-btn danger"
+                                onClick={() => setRemoveTarget(member)}
+                                title={`Remove ${member.name}`}
+                                aria-label={`Remove ${member.name}`}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -855,6 +914,17 @@ export default function Dashboard() {
                 <div className="permission-item"><BadgeCheck size={16} /> <span>Tasks you create are approved instantly</span></div>
               </div>
             </div>
+
+            <div className="glass-card panel danger-panel">
+              <div className="panel-title"><Trash2 size={20} /> Danger zone</div>
+              <p className="panel-sub">
+                Permanently delete this workspace, its tasks and invites. The rest of the team will be notified by email.
+                This cannot be undone.
+              </p>
+              <button className="modern-btn danger" onClick={() => setDeleteWsOpen(true)}>
+                <Trash2 size={16} /> Delete workspace
+              </button>
+            </div>
           </div>
         )}
       </main>
@@ -951,6 +1021,62 @@ export default function Dashboard() {
           <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
             Are you sure you want to permanently delete{' '}
             <strong style={{ color: 'var(--text-primary)' }}>“{deleteTarget?.title}”</strong>?
+          </p>
+        </div>
+      </Modal>
+
+      {/* Remove member confirm modal */}
+      <Modal
+        open={!!removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        title="Remove member"
+        icon={<Trash2 size={20} style={{ color: 'var(--danger)' }} />}
+        footer={
+          <>
+            <button className="modern-btn secondary" onClick={() => setRemoveTarget(null)}>Cancel</button>
+            <button className="modern-btn danger" onClick={handleRemoveMember} disabled={removing}>
+              {removing ? <span className="spinner sm"></span> : <Trash2 size={16} />}
+              {removing ? 'Removing...' : 'Remove member'}
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          <div className="auth-error" style={{ marginBottom: 0 }}>
+            <AlertTriangle size={18} />
+            <span>This cannot be undone.</span>
+          </div>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            Remove <strong style={{ color: 'var(--text-primary)' }}>{removeTarget?.name}</strong> from this
+            workspace? Their assigned tasks will be unassigned and they will be notified by email.
+          </p>
+        </div>
+      </Modal>
+
+      {/* Delete workspace confirm modal */}
+      <Modal
+        open={deleteWsOpen}
+        onClose={() => setDeleteWsOpen(false)}
+        title="Delete workspace"
+        icon={<Trash2 size={20} style={{ color: 'var(--danger)' }} />}
+        footer={
+          <>
+            <button className="modern-btn secondary" onClick={() => setDeleteWsOpen(false)}>Cancel</button>
+            <button className="modern-btn danger" onClick={handleDeleteWorkspace} disabled={deletingWs}>
+              {deletingWs ? <span className="spinner sm"></span> : <Trash2 size={16} />}
+              {deletingWs ? 'Deleting...' : 'Delete workspace'}
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          <div className="auth-error" style={{ marginBottom: 0 }}>
+            <AlertTriangle size={18} />
+            <span>This action is permanent and cannot be undone.</span>
+          </div>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            Are you sure you want to delete <strong style={{ color: 'var(--text-primary)' }}>“{project?.name}”</strong>?
+            All tasks and invites will be removed, and the rest of the team will be notified by email.
           </p>
         </div>
       </Modal>

@@ -8,6 +8,13 @@ const connection = {
   port: Number(process.env.REDIS_PORT || 6379),
 };
 
+const emailShell = (title, body) => `
+  <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+    <h2>${title}</h2>
+    ${body}
+  </div>
+`;
+
 let emailWorker = null;
 
 const startEmailWorker = async () => {
@@ -35,6 +42,52 @@ const startEmailWorker = async () => {
 
           await sendEmail(email, subject, html);
           console.log(`Email successfully sent to ${email}`);
+        }
+
+        if (job.name === 'sendMemberRemoved') {
+          const { email, workspaceName } = job.data;
+
+          const subject = `You've been removed from ${workspaceName} on TaskFlow`;
+          const html = emailShell(
+            `You've been removed from ${workspaceName}`,
+            `<p>You have been removed from the workspace <strong>${workspaceName}</strong> on TaskFlow.</p>
+             <p>You will no longer be able to access its tasks or invite links.</p>
+             <p>If you think this was a mistake, please reach out to the workspace owner.</p>`
+          );
+
+          await sendEmail(email, subject, html);
+          console.log(`Removal email successfully sent to ${email}`);
+        }
+
+        if (job.name === 'sendWorkspaceDeleted') {
+          const { email, workspaceName } = job.data;
+
+          const subject = `Workspace ${workspaceName} has been deleted`;
+          const html = emailShell(
+            `Workspace ${workspaceName} has been deleted`,
+            `<p>The workspace <strong>${workspaceName}</strong> was deleted by its owner.</p>
+             <p>All tasks, assignments and invites in this workspace have been removed.</p>
+             <p>Thank you for being part of the team. You are no longer a member of this workspace.</p>`
+          );
+
+          await sendEmail(email, subject, html);
+          console.log(`Workspace deleted email successfully sent to ${email}`);
+        }
+
+        if (job.name === 'sendCompanyDeleted') {
+          const { email, companyName } = job.data;
+
+          const subject = `Thank you for your contribution to ${companyName}`;
+          const html = emailShell(
+            `Thank you for your contribution to ${companyName}`,
+            `<p>Your company <strong>${companyName}</strong> has been closed by its owner, and all project data has been removed.</p>
+             <p>We want to say a big thank you for your contribution to the team. Every task you completed made a difference.</p>
+             <p>We truly hope to work with you again soon.</p>
+             <p>— The TaskFlow Team</p>`
+          );
+
+          await sendEmail(email, subject, html);
+          console.log(`Company deleted email successfully sent to ${email}`);
         }
       },
       { connection }

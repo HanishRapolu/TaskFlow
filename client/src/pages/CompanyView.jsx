@@ -2,10 +2,11 @@ import { useEffect, useState, useContext, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Building2, Plus, LogOut, Sparkles, Info, Inbox,
-  Crown, ShieldCheck, User, AlertTriangle,
+  Crown, ShieldCheck, User, AlertTriangle, Trash2,
 } from 'lucide-react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import Spinner from '../components/Spinner';
 import Modal from '../components/Modal';
 
@@ -19,6 +20,7 @@ export default function CompanyView() {
   const { companyId } = useParams();
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
+  const toast = useToast();
 
   const [company, setCompany] = useState(null);
   const [workspaces, setWorkspaces] = useState([]);
@@ -35,6 +37,9 @@ export default function CompanyView() {
   const [invitingAdmin, setInvitingAdmin] = useState(false);
   const [inviteAdminError, setInviteAdminError] = useState('');
   const [pendingWorkspaceId, setPendingWorkspaceId] = useState(null);
+
+  const [deleteCompanyOpen, setDeleteCompanyOpen] = useState(false);
+  const [deletingCompany, setDeletingCompany] = useState(false);
 
   const loadData = useCallback(async () => {
     const [companyRes, wsRes] = await Promise.all([
@@ -68,6 +73,20 @@ export default function CompanyView() {
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleDeleteCompany = async () => {
+    setDeletingCompany(true);
+    try {
+      await api.delete(`/companies/${companyId}`);
+      toast.success('Company deleted.');
+      navigate('/select-workspace');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not delete the company.');
+      setDeleteCompanyOpen(false);
+    } finally {
+      setDeletingCompany(false);
+    }
   };
 
   const handleCreateWorkspace = async (e) => {
@@ -218,6 +237,10 @@ export default function CompanyView() {
 
         <button className="modern-btn primary" onClick={() => setCreateOpen(true)}>
           <Plus size={18} /> Create Workspace
+        </button>
+
+        <button className="modern-btn danger" onClick={() => setDeleteCompanyOpen(true)}>
+          <Trash2 size={16} /> Delete company
         </button>
       </div>
 
@@ -371,6 +394,34 @@ export default function CompanyView() {
             manage this project. Only one admin per workspace.
           </p>
         </form>
+      </Modal>
+
+      <Modal
+        open={deleteCompanyOpen}
+        onClose={() => setDeleteCompanyOpen(false)}
+        title="Delete company"
+        icon={<Trash2 size={20} style={{ color: 'var(--danger)' }} />}
+        footer={
+          <>
+            <button className="modern-btn secondary" onClick={() => setDeleteCompanyOpen(false)}>Cancel</button>
+            <button className="modern-btn danger" onClick={handleDeleteCompany} disabled={deletingCompany}>
+              {deletingCompany ? <span className="spinner sm"></span> : <Trash2 size={16} />}
+              {deletingCompany ? 'Deleting...' : 'Delete company'}
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          <div className="auth-error" style={{ marginBottom: 0 }}>
+            <AlertTriangle size={18} />
+            <span>This action is permanent and cannot be undone.</span>
+          </div>
+          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            Deleting <strong style={{ color: 'var(--text-primary)' }}>{company.name}</strong> will
+            permanently remove <strong style={{ color: 'var(--text-primary)' }}>all workspaces</strong>,
+            tasks and invites inside it. Every person on the team will receive a thank-you email.
+          </p>
+        </div>
       </Modal>
     </div>
   );
