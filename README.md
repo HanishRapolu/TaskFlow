@@ -118,21 +118,18 @@ All emails are sent **asynchronously** through a BullMQ queue and processed by a
 
 ### 1. Prerequisites
 - [Node.js](https://nodejs.org/) (v18+)
-- [MongoDB](https://www.mongodb.com/try/download/community) running locally on port `27017`
-- [Docker](https://www.docker.com/) (to run Redis for the email queue)
+- [MongoDB](https://www.mongodb.com/try/download/community) running locally on port `27017` (or MongoDB Atlas)
+- An [Upstash Redis](https://upstash.com/) database (free plan) for the email queue + Socket.io adapter
 
-### 2. Start Redis via Docker
-```bash
-docker run -d -p 6379:6379 redis
-```
+> Upstash's REST API doesn't support the Redis protocol commands BullMQ and Socket.io need, so the app connects to the Upstash Redis **protocol endpoint** (port 6379 over TLS) using the REST token as the password. No local Redis is required.
 
-### 3. Install dependencies (backend + frontend)
+### 2. Install dependencies (backend + frontend)
 ```bash
 npm install
 cd client && npm install && cd ..
 ```
 
-### 4. Environment variables
+### 3. Environment variables
 Create a `.env` file in the project root:
 ```env
 PORT=5000
@@ -140,6 +137,10 @@ MONGO_URI=mongodb://127.0.0.1:27017/taskflow
 JWT_ACCESS_SECRET=supersecretjwtkey123
 JWT_REFRESH_SECRET=supersecretrefreshkey123
 CLIENT_URL=http://localhost:5173
+
+# Upstash Redis (from the Upstash dashboard)
+UPSTASH_REDIS_REST_URL=https://your-db.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your-rest-token
 
 # Brevo SMTP Configuration for Email
 SMTP_HOST=smtp-relay.brevo.com
@@ -149,7 +150,9 @@ SMTP_PASS=your-brevo-smtp-password
 SMTP_FROM="TaskFlow <noreply@taskflow.com>"
 ```
 
-### 5. Start the servers (two terminals)
+The frontend reads `VITE_API_URL` from `client/.env` (see `client/.env.example`). Point it at your deployed backend on Render (e.g. `https://your-api.onrender.com`), and set the backend's `CLIENT_URL` to your deployed frontend (e.g. `https://your-app.vercel.app`) so CORS allows it.
+
+### 4. Start the servers (two terminals)
 **Terminal 1 — Backend:**
 ```bash
 npm run dev     # or: node src/index.js
@@ -249,4 +252,4 @@ All endpoints are prefixed with `/api`.
 - Invite tokens are stored **hashed** (SHA-256) and expire after 24 hours.
 - Every workspace/company action is gated by `protect` (JWT) + `authorizeWorkspace`/`authorizeCompany` (RBAC).
 - Zod schemas validate all auth input.
-- CORS is locked to `http://localhost:5173`.
+- CORS is locked to the frontend origin via the `CLIENT_URL` env var.

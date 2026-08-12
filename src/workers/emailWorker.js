@@ -1,12 +1,6 @@
 import { Worker } from 'bullmq';
 import { sendEmail } from '../utils/mailer.js';
-import dotenv from 'dotenv';
-dotenv.config();
-
-const connection = {
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: Number(process.env.REDIS_PORT || 6379),
-};
+import { redisConnection } from '../config/redis.js';
 
 const emailShell = (title, body) => `
   <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
@@ -90,7 +84,7 @@ const startEmailWorker = async () => {
           console.log(`Company deleted email successfully sent to ${email}`);
         }
       },
-      { connection }
+      { connection: redisConnection }
     );
 
     emailWorker.on('completed', (job) => {

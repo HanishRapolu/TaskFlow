@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { createClient } from 'redis';
+import { Redis } from 'ioredis';
+import { redisConnection } from './redis.js';
 
 let io;
 
@@ -13,10 +14,12 @@ export const initSocket = async (server) => {
     }
   });
 
-  const pubClient = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
+  const { host, port, username, password, tls } = redisConnection;
+  const pubClient = new Redis({ host, port, username, password, tls });
   const subClient = pubClient.duplicate();
 
-  await Promise.all([pubClient.connect(), subClient.connect()]);
+  pubClient.on('error', (err) => console.error('Redis pub client error:', err.message));
+  subClient.on('error', (err) => console.error('Redis sub client error:', err.message));
 
   io.adapter(createAdapter(pubClient, subClient));
 
