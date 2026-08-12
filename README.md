@@ -148,6 +148,11 @@ SMTP_PORT=587
 SMTP_USER=your-brevo-smtp-username
 SMTP_PASS=your-brevo-smtp-password
 SMTP_FROM="TaskFlow <noreply@taskflow.com>"
+
+# Optional: Brevo HTTP API key (xkeysib-...). Preferred for cloud hosting
+# (Render/Vercel) where outbound SMTP is often blocked. When set, it takes
+# priority over the SMTP config above. Generate it in Brevo > SMTP & API > API keys.
+BREVO_API_KEY=
 ```
 
 The frontend reads `VITE_API_URL` from `client/.env` (see `client/.env.example`). Point it at your deployed backend on Render (e.g. `https://your-api.onrender.com`), and set the backend's `CLIENT_URL` to your deployed frontend (e.g. `https://your-app.vercel.app`) so CORS allows it.
