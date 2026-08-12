@@ -151,7 +151,7 @@ export const inviteMember = asyncHandler(async (req, res) => {
     { upsert: true, returnDocument: 'after' }
   );
 
-  const inviteLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/accept-invite/${rawToken}`;
+  const inviteLink = `${(process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, '')}/accept-invite/${rawToken}`;
 
   // Push job to taskQueue
   await taskQueue.add('sendInviteEmail', {
