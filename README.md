@@ -121,7 +121,13 @@ All emails are sent **asynchronously** through a BullMQ queue and processed by a
 - [MongoDB](https://www.mongodb.com/try/download/community) running locally on port `27017` (or MongoDB Atlas)
 - An [Upstash Redis](https://upstash.com/) database (free plan) for the email queue + Socket.io adapter
 
-> Upstash's REST API doesn't support the Redis protocol commands BullMQ and Socket.io need, so the app connects to the Upstash Redis **protocol endpoint** (port 6379 over TLS) using the REST token as the password. No local Redis is required.
+#### Third-party Redis (Upstash)
+TaskFlow doesn't run a local Redis server. The **BullMQ email queue** and the **Socket.io adapter** use [Upstash Redis](https://upstash.com/) — a serverless, managed Redis with a free tier. Because Upstash's REST API can't run the raw Redis protocol commands BullMQ and Socket.io need, the app connects to the Upstash **protocol endpoint** (port 6379 over TLS) and uses the REST token as the password. The connection is built in `src/config/redis.js`:
+
+- When `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set, the host is derived from the REST URL (e.g. `https://foo.upstash.io` → `foo.upstash.io`) and the app connects over TLS on port `6379` with `username: 'default'` and the REST token as the password.
+- If those variables are missing, it falls back to a local Redis at `REDIS_HOST`/`REDIS_PORT` (default `127.0.0.1:6379`), so the app still runs locally without Upstash.
+
+That same connection is shared by the BullMQ queue (`src/config/queue.js`), the email worker (`src/workers/emailWorker.js`), and the Socket.io adapter (`src/config/socket.js`).
 
 ### 2. Install dependencies (backend + frontend)
 ```bash
@@ -132,15 +138,20 @@ cd client && npm install && cd ..
 ### 3. Environment variables
 Create a `.env` file in the project root:
 ```env
+NODE_ENV=development
 PORT=5000
 MONGO_URI=mongodb://127.0.0.1:27017/taskflow
 JWT_ACCESS_SECRET=supersecretjwtkey123
 JWT_REFRESH_SECRET=supersecretrefreshkey123
 CLIENT_URL=http://localhost:5173
 
-# Upstash Redis (from the Upstash dashboard)
+# Upstash Redis (from the Upstash dashboard) — email queue + Socket.io adapter.
+# Host is derived from the REST URL; REST token doubles as the Redis password.
 UPSTASH_REDIS_REST_URL=https://your-db.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your-rest-token
+# Optional local Redis fallback — only used when the Upstash vars above are empty
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
 
 # Brevo SMTP Configuration for Email
 SMTP_HOST=smtp-relay.brevo.com
